@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+"""Command interface shared by the RX 0.2 shell, App Manager, and tests."""
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path[:0] = [str(ROOT / "shell"), str(ROOT / "services" / "rx-portald"), str(ROOT / "services" / "rx-notificationd")]
+from app_manager import AppManager
+from launcher import search
+from rx_portald import Portal
+from rx_notificationd import NotificationCenter
+
+
+def output(value: object) -> None:
+    print(json.dumps(value, indent=2, sort_keys=True))
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description="RuxeonRX RX 0.2 desktop-spine control")
+    parser.add_argument("--state", type=Path, default=Path.home() / ".local/state/ruxeonrx")
+    actions = parser.add_subparsers(dest="action", required=True)
+    install = actions.add_parser("install"); install.add_argument("manifest", type=Path)
+    apps = actions.add_parser("apps"); apps.add_argument("--query", default="")
+    launch = actions.add_parser("launch"); launch.add_argument("app_id")
+    decide = actions.add_parser("decide"); decide.add_argument("app_id"); decide.add_argument("capability"); decide.add_argument("choice", choices=("allow", "deny"))
+    notify = actions.add_parser("notify"); notify.add_argument("app_id"); notify.add_argument("title"); notify.add_argument("body")
+    inspect = actions.add_parser("inspect"); inspect.add_argument("app_id")
+    remove = actions.add_parser("remove"); remove.add_argument("app_id"); remove.add_argument("--purge-data", action="store_true")
+    actions.add_parser("notifications")
+    args = parser.parse_args()
+    manager = AppManager(args.state)
+    try:
+        if args.action == "install": output(manager.install_manifest(args.manifest))
+        elif args.action == "apps": output(search(args.state, args.query))
+        elif args.action == "launch": output({"command": manager.launch(args.app_id)})
+        elif args.action == "decide":
+            manager.decide(args.app_id, args.capability, args.choice == "allow")
+            output({"app_id": args.app_id, "capability": args.capability, "allowed": args.choice == "allow"})
+        elif args.action == "notify":
+            allowed = Portal(args.state).allowed(args.app_id, "notifications")
+            output({"delivered": NotificationCenter(args.state).post(args.app_id, args.title, args.body, allowed)})
+        elif args.action == "inspect": output(manager.inspect(args.app_id))
+        elif args.action == "remove": output({"removed": manager.remove(args.app_id, purge_data=args.purge_data)})
+        else: output(NotificationCenter(args.state).list())
+    except (KeyError, PermissionError) as error:
+        parser.error(str(error) or "unknown app ID")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

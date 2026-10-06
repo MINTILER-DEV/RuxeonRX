@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reproducible Stage 0 health-image workflow. Run on the Linux build server.
+# Reproducible RX 0.2 desktop-spine image workflow. Run on the Linux build server.
 set -euo pipefail
 
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -22,7 +22,7 @@ kernel() {
 }
 
 bootstrap() {
-  need busybox; need cpio; need gzip; need qemu-system-x86_64; need python3
+  need busybox; need cpio; need gzip; need qemu-system-x86_64; need python3; need gcc
   kernel >/dev/null || { echo "no readable kernel; set RX_KERNEL_IMAGE to a readable Linux kernel copy" >&2; exit 2; }
   echo "bootstrap checks passed"
 }
@@ -34,11 +34,14 @@ build() {
   busybox_path="$(command -v busybox)"
   cp "$busybox_path" "$stage/bin/busybox"
   for applet in sh mount cat poweroff; do ln -s busybox "$stage/bin/$applet"; done
+  gcc -static -Os -s -Wall -Wextra -o "$stage/bin/rx-shell" "$root/shell/rx-shell.c"
+  cp "$root/images/init/rx-demo" "$stage/bin/rx-demo"
+  chmod 0755 "$stage/bin/rx-demo"
   revision="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || printf uncommitted)"
   python3 - "$stage/manifest.json" "$revision" <<'PY'
 import json, platform, sys
 with open(sys.argv[1], "w", encoding="utf-8") as handle:
-    json.dump({"product": "RuxeonRX", "version": "0.1.0-dev", "revision": sys.argv[2], "architecture": platform.machine()}, handle, sort_keys=True)
+    json.dump({"product": "RuxeonRX", "version": "0.2.0-dev", "revision": sys.argv[2], "architecture": platform.machine(), "session": "rx-shell framebuffer desktop spine"}, handle, sort_keys=True)
 PY
   cp "$root/images/init/init" "$stage/init"
   chmod 0755 "$stage/init"
@@ -47,26 +50,32 @@ PY
 }
 
 qemu_args() {
-  local args=(-kernel "$(kernel)" -initrd "$image" -append "console=ttyS0 rdinit=/init" -nographic -serial stdio -monitor none -no-reboot)
+  local mode="${1:-test}"
+  local append="console=ttyS0 rdinit=/init rx.mode=$mode"
+  local args=(-kernel "$(kernel)" -initrd "$image" -append "$append" -vga std -serial stdio -monitor none -no-reboot)
+  if [[ "$mode" == desktop ]]; then args+=(-vnc 127.0.0.1:1); else args+=(-display none); fi
   if [[ "${RX_NO_KVM:-0}" != 1 ]] && [[ -r /dev/kvm ]]; then args+=(-enable-kvm); fi
   printf '%s\0' "${args[@]}"
 }
 
 run() {
   test -f "$image" || build
-  mapfile -d '' -t args < <(qemu_args)
+  mapfile -d '' -t args < <(qemu_args desktop)
+  echo "RuxeonRX desktop is available through VNC on 127.0.0.1:5901 (use SSH port forwarding)." >&2
   exec qemu-system-x86_64 "${args[@]}"
 }
 
 test_image() {
   test -f "$image" || build
-  mapfile -d '' -t args < <(qemu_args)
+  mapfile -d '' -t args < <(qemu_args test)
   mkdir -p "$out"
   set +e
   timeout 45s qemu-system-x86_64 "${args[@]}" >"$log" 2>&1
   status=$?
   set -e
-  if grep -q 'RX_HEALTH=ok' "$log"; then echo "QEMU smoke test passed"; return 0; fi
+  if grep -q 'RX_SESSION=ready' "$log" && grep -q 'RX_LAUNCH=org.ruxeonrx.native-test-app' "$log" && grep -q 'RX_HEALTH=ok' "$log"; then
+    echo "QEMU RX 0.2 smoke test passed"; return 0
+  fi
   echo "QEMU did not emit its health signal (exit $status); see $log" >&2
   return 1
 }

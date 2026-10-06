@@ -1,0 +1,33 @@
+#!/bin/sh
+# Small BusyBox-only demonstration of the desktop-spine contract in the image.
+set -eu
+state=/run/ruxeonrx
+app_id=org.ruxeonrx.native-test-app
+mkdir -p "$state/apps" "$state/permissions" "$state/logs"
+
+case "${1:-status}" in
+  install)
+    printf '%s\n' "$app_id" > "$state/apps/$app_id"
+    echo "RX_APPD=registered:$app_id"
+    ;;
+  launch)
+    test -f "$state/apps/$app_id" || { echo "RX_LAUNCH=missing-app"; exit 1; }
+    echo "launch requested" >> "$state/logs/$app_id"
+    echo "RX_LAUNCH=$app_id"
+    ;;
+  decide)
+    test "${2:-}" = allow || test "${2:-}" = deny || { echo "usage: rx-demo decide {allow|deny}" >&2; exit 64; }
+    printf '%s\n' "$2" > "$state/permissions/$app_id.notifications"
+    echo "RX_PORTAL=notifications:$2"
+    ;;
+  remove)
+    rm -f "$state/apps/$app_id" "$state/permissions/$app_id.notifications"
+    echo "RX_APPD=removed:$app_id"
+    ;;
+  status)
+    test -f "$state/apps/$app_id" && app=installed || app=absent
+    test -f "$state/permissions/$app_id.notifications" && permission="$(cat "$state/permissions/$app_id.notifications")" || permission=unset
+    echo "RX_MANAGER=app:$app permission:$permission"
+    ;;
+  *) echo "usage: rx-demo {install|launch|decide|remove|status}" >&2; exit 64 ;;
+esac

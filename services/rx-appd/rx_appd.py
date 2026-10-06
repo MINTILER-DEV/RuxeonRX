@@ -31,15 +31,20 @@ class AppRegistry:
             raise ValueError(f"manifest missing: {', '.join(sorted(missing))}")
         if manifest["runtime_kind"] not in RUNTIMES:
             raise ValueError("unknown runtime kind")
+        if not isinstance(manifest["requested_permissions"], list):
+            raise ValueError("requested_permissions must be a list")
         if not isinstance(manifest["launch"].get("command"), list) or not manifest["launch"]["command"]:
             raise ValueError("launch.command must be a non-empty list")
 
     def register(self, manifest: dict[str, Any]) -> dict[str, Any]:
         self._validate(manifest)
         records = self._read()
-        records[manifest["id"]] = manifest
+        record = dict(manifest)
+        previous = records.get(manifest["id"], {})
+        record["launch_count"] = previous.get("launch_count", 0)
+        records[manifest["id"]] = record
         self._write(records)
-        return manifest
+        return record
 
     def list(self, query: str = "") -> list[dict[str, Any]]:
         needle = query.casefold()
@@ -47,6 +52,13 @@ class AppRegistry:
 
     def get(self, app_id: str) -> dict[str, Any] | None:
         return self._read().get(app_id)
+
+    def record_launch(self, app_id: str) -> None:
+        records = self._read()
+        if app_id not in records:
+            raise KeyError(app_id)
+        records[app_id]["launch_count"] = records[app_id].get("launch_count", 0) + 1
+        self._write(records)
 
     def uninstall(self, app_id: str) -> bool:
         records = self._read()

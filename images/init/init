@@ -2,7 +2,21 @@
 set -eu
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
-echo "RuxeonRX Stage 0 health image"
+mount -t devtmpfs devtmpfs /dev || true
+echo "RuxeonRX RX 0.2 desktop-spine image"
 cat /manifest.json
+if /bin/rx-shell; then :; else echo "RX_SHELL=failed"; fi
+case "$(cat /proc/cmdline)" in
+  *rx.mode=test*)
+    /bin/rx-demo install
+    /bin/rx-demo decide allow
+    /bin/rx-demo launch
+    /bin/rx-demo remove
+    ;;
+  *)
+    echo "RX_DESKTOP=interactive (use rx-demo to inspect the native-app flow)"
+    exec /bin/sh
+    ;;
+esac
 echo "RX_HEALTH=ok"
 poweroff -f || exit 0
