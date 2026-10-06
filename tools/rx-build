@@ -10,11 +10,20 @@ log="$out/qemu-smoke.log"
 command="${1:-help}"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "missing prerequisite: $1" >&2; exit 2; }; }
-kernel() { ls -1 /boot/vmlinuz-* 2>/dev/null | sort | tail -n 1; }
+kernel() {
+  local candidate
+  if [[ -n "${RX_KERNEL_IMAGE:-}" ]]; then
+    candidate="$RX_KERNEL_IMAGE"
+  else
+    candidate="$(ls -1 /boot/vmlinuz-* 2>/dev/null | sort | tail -n 1)"
+  fi
+  test -n "$candidate" && test -r "$candidate" || return 1
+  printf '%s\n' "$candidate"
+}
 
 bootstrap() {
   need busybox; need cpio; need gzip; need qemu-system-x86_64; need python3
-  test -n "$(kernel)" || { echo "missing /boot/vmlinuz-*" >&2; exit 2; }
+  kernel >/dev/null || { echo "no readable kernel; set RX_KERNEL_IMAGE to a readable Linux kernel copy" >&2; exit 2; }
   echo "bootstrap checks passed"
 }
 
@@ -64,7 +73,7 @@ test_image() {
 
 bundle() {
   mkdir -p "$out"
-  tar -C "$out" --exclude='*.img' --exclude='*.qcow2' -czf "$out/ruxeonrx-diagnostics.tar.gz" .
+  tar -C "$out" --exclude='*.img' --exclude='*.qcow2' --exclude='ruxeonrx-diagnostics.tar.gz' -czf "$out/ruxeonrx-diagnostics.tar.gz" .
   echo "wrote $out/ruxeonrx-diagnostics.tar.gz"
 }
 

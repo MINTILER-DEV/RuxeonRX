@@ -5,8 +5,8 @@ laptop.  The scripts never require root after dependencies are installed.
 
 ## Prerequisites
 
-Install a static BusyBox, QEMU x86 system emulator, a Linux kernel under
-`/boot`, GNU cpio, gzip, and Python 3.  On Debian-family hosts:
+Install a static BusyBox, QEMU x86 system emulator, a Linux kernel that the
+build user can read, GNU cpio, gzip, and Python 3.  On Debian-family hosts:
 
 ```sh
 sudo apt-get update
@@ -16,6 +16,14 @@ sudo apt-get install --yes busybox-static qemu-system-x86 cpio gzip python3 debo
 `debootstrap` is pinned by the host's configured Debian stable repository and
 is reserved for the next rootfs-composition step.  The health image uses no
 network downloads during its build.
+
+Some distributions protect `/boot/vmlinuz-*` from non-root accounts.  Make a
+read-only build copy once, then select it explicitly:
+
+```sh
+sudo install -D -m 0644 /boot/vmlinuz-"$(uname -r)" "$HOME/.cache/ruxeonrx/vmlinuz"
+export RX_KERNEL_IMAGE="$HOME/.cache/ruxeonrx/vmlinuz"
+```
 
 ## Build and test
 
