@@ -8,11 +8,16 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path[:0] = [str(ROOT / "shell"), str(ROOT / "services" / "rx-portald"), str(ROOT / "services" / "rx-notificationd")]
+sys.path[:0] = [str(ROOT / "shell")] + [str(path) for path in (ROOT / "services").iterdir() if path.is_dir()]
 from app_manager import AppManager
 from launcher import search
 from rx_portald import Portal
 from rx_notificationd import NotificationCenter
+from rx_sessiond import SessionSupervisor
+from rx_settingsd import Settings
+from rx_deviced import DeviceInventory
+from rx_recoveryd import Recovery
+from rx_diagnosticsd import Diagnostics
 
 
 def output(value: object) -> None:
@@ -20,7 +25,7 @@ def output(value: object) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="RuxeonRX RX 0.3 native app-management control")
+    parser = argparse.ArgumentParser(description="RuxeonRX RX 0.5 alpha control")
     parser.add_argument("--state", type=Path, default=Path.home() / ".local/state/ruxeonrx")
     actions = parser.add_subparsers(dest="action", required=True)
     install = actions.add_parser("install"); install.add_argument("manifest", type=Path)
@@ -40,6 +45,17 @@ def main() -> int:
     actions.add_parser("permissions")
     remove = actions.add_parser("remove"); remove.add_argument("app_id"); remove.add_argument("--purge-data", action="store_true")
     actions.add_parser("notifications")
+    session = actions.add_parser("session-start"); session.add_argument("--safe-mode", action="store_true")
+    crash = actions.add_parser("session-crash"); crash.add_argument("service")
+    actions.add_parser("session-health")
+    actions.add_parser("session-recover")
+    actions.add_parser("settings")
+    setting = actions.add_parser("set"); setting.add_argument("key"); setting.add_argument("value")
+    actions.add_parser("devices")
+    snapshot = actions.add_parser("snapshot"); snapshot.add_argument("name")
+    restore = actions.add_parser("restore"); restore.add_argument("name")
+    actions.add_parser("snapshots")
+    support = actions.add_parser("support-bundle"); support.add_argument("target", type=Path)
     args = parser.parse_args()
     manager = AppManager(args.state)
     try:
@@ -65,7 +81,18 @@ def main() -> int:
         elif args.action == "sources": output(manager.packages.sources())
         elif args.action == "permissions": output({app["id"]: manager.portal.decisions(app["id"]) for app in manager.registry.list()})
         elif args.action == "remove": output({"removed": manager.remove(args.app_id, purge_data=args.purge_data)})
-        else: output(NotificationCenter(args.state).list())
+        elif args.action == "notifications": output(NotificationCenter(args.state).list())
+        elif args.action == "session-start": output(SessionSupervisor(args.state).start(safe_mode=args.safe_mode))
+        elif args.action == "session-crash": output(SessionSupervisor(args.state).crash(args.service))
+        elif args.action == "session-health": output(SessionSupervisor(args.state).health())
+        elif args.action == "session-recover": output(SessionSupervisor(args.state).recover())
+        elif args.action == "settings": output(Settings(args.state).all())
+        elif args.action == "set": output(Settings(args.state).set(args.key, json.loads(args.value)))
+        elif args.action == "devices": output(DeviceInventory().collect())
+        elif args.action == "snapshot": output({"snapshot": str(Recovery(args.state).create(args.name))})
+        elif args.action == "restore": output({"restored_files": Recovery(args.state).restore(args.name)})
+        elif args.action == "snapshots": output(Recovery(args.state).list())
+        elif args.action == "support-bundle": output({"bundle": str(Diagnostics(args.state, DeviceInventory().collect()).create(args.target))})
     except (KeyError, PermissionError, ValueError) as error:
         parser.error(str(error) or "unknown app ID")
     return 0

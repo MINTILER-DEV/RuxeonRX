@@ -1,7 +1,7 @@
 #!/bin/sh
 # Small BusyBox-only demonstration of the desktop-spine contract in the image.
 set -eu
-state=/run/ruxeonrx
+state=/state/ruxeonrx
 app_id=org.ruxeonrx.native-test-app
 mkdir -p "$state/apps" "$state/permissions" "$state/logs"
 

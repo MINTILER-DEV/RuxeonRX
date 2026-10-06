@@ -3,7 +3,14 @@ set -eu
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
 mount -t devtmpfs devtmpfs /dev || true
-echo "RuxeonRX RX 0.2 desktop-spine image"
+mkdir -p /state
+if mount -t ext4 /dev/vda /state 2>/dev/null; then
+  echo "RX_STATE=persistent"
+else
+  mount -t tmpfs tmpfs /state
+  echo "RX_STATE=volatile"
+fi
+echo "RuxeonRX RX 0.5 usable-alpha image"
 cat /manifest.json
 if /bin/rx-shell; then :; else echo "RX_SHELL=failed"; fi
 case "$(cat /proc/cmdline)" in
@@ -14,6 +21,7 @@ case "$(cat /proc/cmdline)" in
     /bin/rx-demo remove
     ;;
   *)
+    case "$(cat /proc/cmdline)" in *rx.mode=safe*) echo "RX_SAFE_MODE=active";; esac
     echo "RX_DESKTOP=interactive (use rx-demo to inspect the native-app flow)"
     exec /bin/sh
     ;;

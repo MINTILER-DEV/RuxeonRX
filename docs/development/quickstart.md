@@ -31,7 +31,9 @@ export RX_KERNEL_IMAGE="$HOME/.cache/ruxeonrx/vmlinuz"
 ./tools/rx-build bootstrap  # checks prerequisites; does not install packages
 ./tools/rx-build build
 ./tools/rx-build run        # interactive serial console
+./tools/rx-build safe       # recovery session with minimal startup policy
 ./tools/rx-build test       # non-interactive QEMU health check
+./tools/rx-build doctor     # JSON prerequisite and acceleration report
 ./tools/rx-build bundle     # scrubbed diagnostic archive in out/
 ```
 
@@ -80,3 +82,8 @@ RX 0.3 adds `add-source`, `sources`, `update`, `repair`, `rollback`,
 `set-default`, `defaults`, `permissions`, and `grant-file`. See
 [`docs/releases/rx-0.3.md`](../releases/rx-0.3.md) for the full transaction
 and recovery contract.
+
+RX 0.4/0.5 add `session-start`, `session-health`, `session-recover`, `settings`,
+`set`, `devices`, `snapshot`, `restore`, `snapshots`, and `support-bundle`.
+Release contracts are documented in [`rx-0.4.md`](../releases/rx-0.4.md) and
+[`rx-0.5.md`](../releases/rx-0.5.md).

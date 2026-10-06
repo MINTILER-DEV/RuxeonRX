@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Reproducible RX 0.2 desktop-spine image workflow. Run on the Linux build server.
+# Reproducible RX 0.5 usable-alpha image workflow. Run on the Linux build server.
 set -euo pipefail
 
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
@@ -7,6 +7,7 @@ out="$root/out"
 stage="$out/initramfs"
 image="$out/ruxeonrx-health-initramfs.cpio.gz"
 log="$out/qemu-smoke.log"
+state_image="$out/ruxeonrx-state.img"
 command="${1:-help}"
 
 need() { command -v "$1" >/dev/null 2>&1 || { echo "missing prerequisite: $1" >&2; exit 2; }; }
@@ -22,7 +23,7 @@ kernel() {
 }
 
 bootstrap() {
-  need busybox; need cpio; need gzip; need qemu-system-x86_64; need python3; need gcc
+  need busybox; need cpio; need gzip; need qemu-system-x86_64; need python3; need gcc; need truncate; need mkfs.ext4
   kernel >/dev/null || { echo "no readable kernel; set RX_KERNEL_IMAGE to a readable Linux kernel copy" >&2; exit 2; }
   echo "bootstrap checks passed"
 }
@@ -33,7 +34,7 @@ build() {
   mkdir -p "$stage/bin" "$stage/proc" "$stage/sys" "$stage/dev" "$out"
   busybox_path="$(command -v busybox)"
   cp "$busybox_path" "$stage/bin/busybox"
-  for applet in sh mount cat poweroff; do ln -s busybox "$stage/bin/$applet"; done
+  for applet in sh mount cat poweroff mkdir rm sleep sync; do ln -s busybox "$stage/bin/$applet"; done
   gcc -static -Os -s -Wall -Wextra -o "$stage/bin/rx-shell" "$root/shell/rx-shell.c"
   cp "$root/images/init/rx-demo" "$stage/bin/rx-demo"
   chmod 0755 "$stage/bin/rx-demo"
@@ -41,19 +42,23 @@ build() {
   python3 - "$stage/manifest.json" "$revision" <<'PY'
 import json, platform, sys
 with open(sys.argv[1], "w", encoding="utf-8") as handle:
-    json.dump({"product": "RuxeonRX", "version": "0.2.0-dev", "revision": sys.argv[2], "architecture": platform.machine(), "session": "rx-shell framebuffer desktop spine"}, handle, sort_keys=True)
+    json.dump({"product": "RuxeonRX", "version": "0.5.0-alpha", "revision": sys.argv[2], "architecture": platform.machine(), "session": "rx-shell framebuffer usable alpha", "state_format": 1}, handle, sort_keys=True)
 PY
   cp "$root/images/init/init" "$stage/init"
   chmod 0755 "$stage/init"
   (cd "$stage" && find . -print0 | sort -z | cpio --null --quiet -o -H newc | gzip -n > "$image")
+  if [[ ! -f "$state_image" ]]; then
+    truncate -s 64M "$state_image"
+    mkfs.ext4 -q -F -L RXSTATE "$state_image"
+  fi
   echo "built $image"
 }
 
 qemu_args() {
   local mode="${1:-test}"
   local append="console=ttyS0 rdinit=/init rx.mode=$mode"
-  local args=(-kernel "$(kernel)" -initrd "$image" -append "$append" -vga std -serial stdio -monitor none -no-reboot)
-  if [[ "$mode" == desktop ]]; then args+=(-vnc 127.0.0.1:1); else args+=(-display none); fi
+  local args=(-kernel "$(kernel)" -initrd "$image" -append "$append" -drive "file=$state_image,format=raw,if=virtio" -vga std -serial stdio -monitor none -no-reboot)
+  if [[ "$mode" == desktop || "$mode" == safe ]]; then args+=(-vnc 127.0.0.1:1); else args+=(-display none); fi
   if [[ "${RX_NO_KVM:-0}" != 1 ]] && [[ -r /dev/kvm ]]; then args+=(-enable-kvm); fi
   printf '%s\0' "${args[@]}"
 }
@@ -65,6 +70,13 @@ run() {
   exec qemu-system-x86_64 "${args[@]}"
 }
 
+safe() {
+  test -f "$image" || build
+  mapfile -d '' -t args < <(qemu_args safe)
+  echo "RuxeonRX safe mode is available through VNC on 127.0.0.1:5901." >&2
+  exec qemu-system-x86_64 "${args[@]}"
+}
+
 test_image() {
   test -f "$image" || build
   mapfile -d '' -t args < <(qemu_args test)
@@ -73,8 +85,8 @@ test_image() {
   timeout 45s qemu-system-x86_64 "${args[@]}" >"$log" 2>&1
   status=$?
   set -e
-  if grep -q 'RX_SESSION=ready' "$log" && grep -q 'RX_LAUNCH=org.ruxeonrx.native-test-app' "$log" && grep -q 'RX_HEALTH=ok' "$log"; then
-    echo "QEMU RX 0.2 smoke test passed"; return 0
+  if grep -q 'RX_SESSION=ready' "$log" && grep -q 'RX_STATE=' "$log" && grep -q 'RX_LAUNCH=org.ruxeonrx.native-test-app' "$log" && grep -q 'RX_HEALTH=ok' "$log"; then
+    echo "QEMU RX 0.5 smoke test passed"; return 0
   fi
   echo "QEMU did not emit its health signal (exit $status); see $log" >&2
   return 1
@@ -86,12 +98,22 @@ bundle() {
   echo "wrote $out/ruxeonrx-diagnostics.tar.gz"
 }
 
+doctor() {
+  python3 - "$(kernel 2>/dev/null || true)" <<'PY'
+import json, os, shutil, sys
+tools = ("busybox", "cpio", "gzip", "qemu-system-x86_64", "python3", "gcc", "mkfs.ext4")
+print(json.dumps({"kernel": sys.argv[1] or None, "kvm_usable": os.access("/dev/kvm", os.R_OK | os.W_OK), "tools": {tool: shutil.which(tool) is not None for tool in tools}}, indent=2, sort_keys=True))
+PY
+}
+
 case "$command" in
   bootstrap) bootstrap ;;
   build) build ;;
   run) run ;;
+  safe) safe ;;
   test) test_image ;;
   bundle) bundle ;;
+  doctor) doctor ;;
   clean) rm -rf "$out"; echo "removed generated artifacts" ;;
-  *) echo "usage: $0 {bootstrap|build|run|test|bundle|clean}" >&2; exit 64 ;;
+  *) echo "usage: $0 {bootstrap|build|run|safe|test|doctor|bundle|clean}" >&2; exit 64 ;;
 esac
