@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Command interface shared by the RX 0.2 shell, App Manager, and tests."""
+"""Command interface shared by the RX 0.3 shell, App Manager, and tests."""
 from __future__ import annotations
 
 import argparse
@@ -20,21 +20,33 @@ def output(value: object) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="RuxeonRX RX 0.2 desktop-spine control")
+    parser = argparse.ArgumentParser(description="RuxeonRX RX 0.3 native app-management control")
     parser.add_argument("--state", type=Path, default=Path.home() / ".local/state/ruxeonrx")
     actions = parser.add_subparsers(dest="action", required=True)
     install = actions.add_parser("install"); install.add_argument("manifest", type=Path)
+    update = actions.add_parser("update"); update.add_argument("manifest", type=Path)
+    rollback = actions.add_parser("rollback"); rollback.add_argument("app_id")
+    repair = actions.add_parser("repair"); repair.add_argument("app_id")
     apps = actions.add_parser("apps"); apps.add_argument("--query", default="")
     launch = actions.add_parser("launch"); launch.add_argument("app_id")
     decide = actions.add_parser("decide"); decide.add_argument("app_id"); decide.add_argument("capability"); decide.add_argument("choice", choices=("allow", "deny"))
     notify = actions.add_parser("notify"); notify.add_argument("app_id"); notify.add_argument("title"); notify.add_argument("body")
     inspect = actions.add_parser("inspect"); inspect.add_argument("app_id")
+    grant_file = actions.add_parser("grant-file"); grant_file.add_argument("app_id"); grant_file.add_argument("path", type=Path)
+    default = actions.add_parser("set-default"); default.add_argument("app_id"); default.add_argument("handler")
+    actions.add_parser("defaults")
+    source = actions.add_parser("add-source"); source.add_argument("name"); source.add_argument("url")
+    actions.add_parser("sources")
+    actions.add_parser("permissions")
     remove = actions.add_parser("remove"); remove.add_argument("app_id"); remove.add_argument("--purge-data", action="store_true")
     actions.add_parser("notifications")
     args = parser.parse_args()
     manager = AppManager(args.state)
     try:
         if args.action == "install": output(manager.install_manifest(args.manifest))
+        elif args.action == "update": output(manager.update(args.manifest))
+        elif args.action == "rollback": output(manager.rollback(args.app_id))
+        elif args.action == "repair": output(manager.repair(args.app_id))
         elif args.action == "apps": output(search(args.state, args.query))
         elif args.action == "launch": output({"command": manager.launch(args.app_id)})
         elif args.action == "decide":
@@ -44,9 +56,17 @@ def main() -> int:
             allowed = Portal(args.state).allowed(args.app_id, "notifications")
             output({"delivered": NotificationCenter(args.state).post(args.app_id, args.title, args.body, allowed)})
         elif args.action == "inspect": output(manager.inspect(args.app_id))
+        elif args.action == "grant-file": output({"path": manager.grant_file(args.app_id, args.path)})
+        elif args.action == "set-default":
+            manager.set_default_handler(args.app_id, args.handler)
+            output({"handler": args.handler, "app_id": args.app_id})
+        elif args.action == "defaults": output(manager.associations.defaults())
+        elif args.action == "add-source": output(manager.packages.add_source(args.name, args.url))
+        elif args.action == "sources": output(manager.packages.sources())
+        elif args.action == "permissions": output({app["id"]: manager.portal.decisions(app["id"]) for app in manager.registry.list()})
         elif args.action == "remove": output({"removed": manager.remove(args.app_id, purge_data=args.purge_data)})
         else: output(NotificationCenter(args.state).list())
-    except (KeyError, PermissionError) as error:
+    except (KeyError, PermissionError, ValueError) as error:
         parser.error(str(error) or "unknown app ID")
     return 0
 

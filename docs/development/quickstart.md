@@ -75,3 +75,8 @@ state="$(mktemp -d)"
 ./tools/rxctl --state "$state" inspect org.ruxeonrx.native-test-app
 ./tools/rxctl --state "$state" remove org.ruxeonrx.native-test-app --purge-data
 ```
+
+RX 0.3 adds `add-source`, `sources`, `update`, `repair`, `rollback`,
+`set-default`, `defaults`, `permissions`, and `grant-file`. See
+[`docs/releases/rx-0.3.md`](../releases/rx-0.3.md) for the full transaction
+and recovery contract.

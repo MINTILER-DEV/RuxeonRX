@@ -10,6 +10,7 @@ VALID_CAPABILITIES = {"files", "notifications", "camera", "microphone", "locatio
 class Portal:
     def __init__(self, state_dir: Path) -> None:
         self.path = state_dir / "permissions.json"
+        self.grants_path = state_dir / "file-grants.json"
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def _read(self) -> dict[str, dict[str, bool]]:
@@ -37,3 +38,29 @@ class Portal:
             temporary = self.path.with_suffix(".tmp")
             temporary.write_text(json.dumps(decisions, indent=2, sort_keys=True) + "\n")
             temporary.replace(self.path)
+        grants = self._read_grants()
+        if app_id in grants:
+            del grants[app_id]
+            self._write_grants(grants)
+
+    def _read_grants(self) -> dict[str, list[str]]:
+        return json.loads(self.grants_path.read_text(encoding="utf-8")) if self.grants_path.exists() else {}
+
+    def _write_grants(self, grants: dict[str, list[str]]) -> None:
+        temporary = self.grants_path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(grants, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        temporary.replace(self.grants_path)
+
+    def grant_file(self, app_id: str, path: Path) -> str:
+        if not self.allowed(app_id, "files"):
+            raise PermissionError("file permission has not been granted")
+        resolved = str(path.expanduser().resolve())
+        grants = self._read_grants()
+        grants.setdefault(app_id, [])
+        if resolved not in grants[app_id]:
+            grants[app_id].append(resolved)
+            self._write_grants(grants)
+        return resolved
+
+    def file_grants(self, app_id: str) -> list[str]:
+        return self._read_grants().get(app_id, [])

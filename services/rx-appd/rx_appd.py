@@ -46,6 +46,13 @@ class AppRegistry:
         self._write(records)
         return record
 
+    def replace(self, record: dict[str, Any]) -> None:
+        """Commit a fully validated record as one atomic state transition."""
+        self._validate(record)
+        records = self._read()
+        records[record["id"]] = record
+        self._write(records)
+
     def list(self, query: str = "") -> list[dict[str, Any]]:
         needle = query.casefold()
         return [record for record in self._read().values() if needle in record["name"].casefold() or needle in record["id"].casefold()]

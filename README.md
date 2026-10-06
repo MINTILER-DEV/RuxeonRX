@@ -4,8 +4,8 @@ RuxeonRX is a compatibility-first Linux desktop platform.  It presents native
 Linux, Windows, Android, web, and virtual-machine applications through one
 launcher, permissions model, and application manager.
 
-This repository implements the RX 0.2 desktop spine on top of its Stage 0
-foundation:
+This repository implements the RX 0.3 native-app experience on top of its RX
+0.2 desktop spine:
 
 - `tools/rx-build` builds and smoke-tests a bootable, serial-console Linux
   proof image on a Linux host;
@@ -16,6 +16,9 @@ foundation:
 - the notification center is permission mediated; and
 - native-app integration tests exercise install, discover, launch, deny/allow,
   notification, diagnostics, and cleanup end to end.
+- RX 0.3 adds explicit sources, transactional update/rollback/repair, package
+  checksum caching, MIME/protocol defaults, per-file grants, storage reporting,
+  and removal cleanup.
 
 ## Quick start (Linux build server)
 
