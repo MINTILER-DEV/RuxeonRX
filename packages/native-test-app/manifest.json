@@ -1,0 +1,12 @@
+{
+  "id": "org.ruxeonrx.native-test-app",
+  "name": "RuxeonRX Native Test App",
+  "version": "0.1.0",
+  "source": "ruxeonrx-samples",
+  "package_kind": "test",
+  "runtime_kind": "native-linux",
+  "launch": {"command": ["rx-native-test-app"]},
+  "data_dir": ".local/share/ruxeonrx/native-test-app",
+  "diagnostics_dir": ".local/state/ruxeonrx/native-test-app",
+  "requested_permissions": ["files", "notifications"]
+}

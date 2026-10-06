@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+echo "RuxeonRX Stage 0 health image"
+cat /manifest.json
+echo "RX_HEALTH=ok"
+poweroff -f || exit 0

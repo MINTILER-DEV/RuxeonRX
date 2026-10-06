@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Reproducible Stage 0 health-image workflow. Run on the Linux build server.
+set -euo pipefail
+
+root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+out="$root/out"
+stage="$out/initramfs"
+image="$out/ruxeonrx-health-initramfs.cpio.gz"
+log="$out/qemu-smoke.log"
+command="${1:-help}"
+
+need() { command -v "$1" >/dev/null 2>&1 || { echo "missing prerequisite: $1" >&2; exit 2; }; }
+kernel() { ls -1 /boot/vmlinuz-* 2>/dev/null | sort | tail -n 1; }
+
+bootstrap() {
+  need busybox; need cpio; need gzip; need qemu-system-x86_64; need python3
+  test -n "$(kernel)" || { echo "missing /boot/vmlinuz-*" >&2; exit 2; }
+  echo "bootstrap checks passed"
+}
+
+build() {
+  bootstrap
+  rm -rf "$stage"
+  mkdir -p "$stage/bin" "$stage/proc" "$stage/sys" "$stage/dev" "$out"
+  busybox_path="$(command -v busybox)"
+  cp "$busybox_path" "$stage/bin/busybox"
+  for applet in sh mount cat poweroff; do ln -s busybox "$stage/bin/$applet"; done
+  revision="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || printf uncommitted)"
+  python3 - "$stage/manifest.json" "$revision" <<'PY'
+import json, platform, sys
+with open(sys.argv[1], "w", encoding="utf-8") as handle:
+    json.dump({"product": "RuxeonRX", "version": "0.1.0-dev", "revision": sys.argv[2], "architecture": platform.machine()}, handle, sort_keys=True)
+PY
+  cp "$root/images/init/init" "$stage/init"
+  chmod 0755 "$stage/init"
+  (cd "$stage" && find . -print0 | sort -z | cpio --null --quiet -o -H newc | gzip -n > "$image")
+  echo "built $image"
+}
+
+qemu_args() {
+  local args=(-kernel "$(kernel)" -initrd "$image" -append "console=ttyS0 rdinit=/init" -nographic -serial stdio -monitor none -no-reboot)
+  if [[ "${RX_NO_KVM:-0}" != 1 ]] && [[ -r /dev/kvm ]]; then args+=(-enable-kvm); fi
+  printf '%s\0' "${args[@]}"
+}
+
+run() {
+  test -f "$image" || build
+  mapfile -d '' -t args < <(qemu_args)
+  exec qemu-system-x86_64 "${args[@]}"
+}
+
+test_image() {
+  test -f "$image" || build
+  mapfile -d '' -t args < <(qemu_args)
+  mkdir -p "$out"
+  set +e
+  timeout 45s qemu-system-x86_64 "${args[@]}" >"$log" 2>&1
+  status=$?
+  set -e
+  if grep -q 'RX_HEALTH=ok' "$log"; then echo "QEMU smoke test passed"; return 0; fi
+  echo "QEMU did not emit its health signal (exit $status); see $log" >&2
+  return 1
+}
+
+bundle() {
+  mkdir -p "$out"
+  tar -C "$out" --exclude='*.img' --exclude='*.qcow2' -czf "$out/ruxeonrx-diagnostics.tar.gz" .
+  echo "wrote $out/ruxeonrx-diagnostics.tar.gz"
+}
+
+case "$command" in
+  bootstrap) bootstrap ;;
+  build) build ;;
+  run) run ;;
+  test) test_image ;;
+  bundle) bundle ;;
+  clean) rm -rf "$out"; echo "removed generated artifacts" ;;
+  *) echo "usage: $0 {bootstrap|build|run|test|bundle|clean}" >&2; exit 64 ;;
+esac
