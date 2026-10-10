@@ -211,8 +211,11 @@ class Desktop:
         style = ttk.Style(self.root)
         colours = {"background": "#111111", "foreground": "#ffffff"} if settings["appearance.high_contrast"] else {"background": "#e9eef5", "foreground": "#14243b"}
         style.configure(".", font=("DejaVu Sans", size), **colours)
+        style.configure("Treeview", fieldbackground=colours["background"], background=colours["background"], foreground=colours["foreground"])
+        style.configure("TButton", background=colours["background"], foreground=colours["foreground"])
+        style.map("Treeview", foreground=[("selected", "#ffffff")], background=[("selected", "#355ed8")])
         style.configure("Treeview", rowheight=max(36, int(size * 2.7)))
-        style.map("TButton", background=[("focus", "#b4c7f7")])
+        style.map("TButton", background=[("focus", "#355ed8"), ("active", "#355ed8")], foreground=[("focus", "#ffffff"), ("active", "#ffffff")])
         if os.name == "posix":
             import subprocess
             try:
