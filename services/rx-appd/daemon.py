@@ -95,6 +95,8 @@ class DesktopService:
             if process and process.poll() is None:
                 process.terminate()
                 process.wait(timeout=5)
+            self.tokens = {token: app_id for token, app_id in self.tokens.items() if app_id != p["app_id"]}
+            self.requests = {key: item for key, item in self.requests.items() if item["app_id"] != p["app_id"]}
             return m.remove(p["app_id"], purge_data=p.get("purge_data", False))
         if method == "launch":
             app_id = p["app_id"]
@@ -105,11 +107,7 @@ class DesktopService:
                 return {"pid": running.pid, "running": True}
             token = secrets.token_hex(32)
             env = {"RX_TOKEN": token, "RX_PORTAL_DIR": str(self.runtime / "portal")}
-            if app.get("unrestricted"):
-                import subprocess
-                process = subprocess.Popen(m.launch(app_id), env={**os.environ, **env})
-            else:
-                process = m.execute(app_id, environment=env, sandbox=app.get("sandbox", False))
+            process = m.execute(app_id, environment=env, sandbox=app.get("sandbox", False))
             self.processes[app_id] = process
             self.tokens[token] = app_id
             return {"pid": process.pid}
@@ -120,17 +118,20 @@ class DesktopService:
         if method == "answer":
             request = self.requests[p["id"]]
             app_id, capability = request["app_id"], request["capability"]
-            m.decide(app_id, capability, bool(p["allowed"]))
             answer = {**request, "pending": False, "message": "Permission denied"}
+            content = None
+            if p["allowed"] and capability == "files":
+                path = Path(p["path"])
+                if not path.is_file() or path.stat().st_size > 1024 * 1024:
+                    raise ValueError("choose a regular text file smaller than 1 MiB")
+                content = path.read_text(encoding="utf-8", errors="replace")
+            m.decide(app_id, capability, bool(p["allowed"]))
             if p["allowed"]:
                 if capability == "files":
-                    path = Path(p["path"])
-                    if not path.is_file() or path.stat().st_size > 1024 * 1024:
-                        raise ValueError("choose a regular text file smaller than 1 MiB")
-                    granted = m.grant_file(app_id, path)
-                    answer.update(content=Path(granted).read_text(encoding="utf-8", errors="replace"), message="Opened " + path.name)
+                    m.grant_file(app_id, path)
+                    answer.update(content=content, message="Opened " + path.name)
                 else:
-                    self.notifications.post(app_id, "RX Notes", "Your notification was delivered through RuxeonRX.", True)
+                    self.notifications.post(app_id, m.registry.get(app_id)["name"], "Your notification was delivered through RuxeonRX.", True)
                     answer["message"] = "Notification delivered"
             self.requests[p["id"]] = answer
             return answer

@@ -12,6 +12,20 @@ from app_manager import AppManager
 
 
 class RealPackageTest(unittest.TestCase):
+    def test_regular_desktop_entry_launches_with_captured_logs_and_handlers(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); manager = AppManager(root / "state")
+            desktop = root / "regular.desktop"
+            script = root / "regular.py"
+            script.write_text("print('regular native app really ran')")
+            desktop.write_text(f'[Desktop Entry]\nType=Application\nName=Regular native\nExec="{sys.executable}" "{script}" %f\nMimeType=text/plain;\n')
+            app = manager.import_desktop(desktop)
+            self.assertEqual(app["id"], manager.associations.defaults()["text/plain"])
+            self.assertEqual(0, manager.execute(app["id"]).wait(timeout=10))
+            self.assertIn("regular native app really ran", manager.logs(app["id"]))
+            manager.remove(app["id"], purge_data=True)
+            self.assertNotIn("text/plain", manager.associations.defaults())
+
     def package(self, directory, version="1", payload="print('native executable ran')"):
         manifest = json.loads((ROOT / "packages/native-test-app/manifest.json").read_text())
         manifest.update(version=version, launch={"command": [sys.executable, "{package}/main.py"]})

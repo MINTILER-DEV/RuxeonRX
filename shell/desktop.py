@@ -327,7 +327,9 @@ class Desktop:
                 if allowed and request["capability"] == "files":
                     path = filedialog.askopenfilename(parent=self.root)
                     allowed = bool(path)
-                self.call("answer", id=request["id"], allowed=allowed, path=path)
+                answer = self.call("answer", id=request["id"], allowed=allowed, path=path)
+                if answer is None:
+                    self.call("answer", id=request["id"], allowed=False, path="")
                 self.refresh_permissions()
             entries = self.client.call("notifications")
             self.notification_text.configure(state="normal"); self.notification_text.delete("1.0", "end")

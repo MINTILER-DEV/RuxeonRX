@@ -69,8 +69,11 @@ class AppManager:
         app = self.registry.get(app_id)
         if app is None:
             raise KeyError(app_id)
-        self.packages.verify(app)
-        command = [part.replace("{package}", app["package"]["root"]) for part in self.launch(app_id)]
+        if app.get("unrestricted"):
+            command = self.launch(app_id)
+        else:
+            self.packages.verify(app)
+            command = [part.replace("{package}", app["package"]["root"]) for part in self.launch(app_id)]
         data_dir = self.state_dir / "data" / app_id
         data_dir.mkdir(parents=True, exist_ok=True)
         env = {**os.environ, **(environment or {}), "RX_APP_ID": app_id, "RX_APP_NAME": app["name"], "RX_DATA_DIR": str(data_dir)}
@@ -100,6 +103,8 @@ class AppManager:
         app_id = "org.ruxeonrx.import." + path.stem.lower().replace("_", "-")
         record = {"id": app_id, "name": entry.get("Name", path.stem), "version": "1", "source": "desktop-entry", "runtime_kind": "native-linux", "package_kind": "desktop-entry", "launch": {"command": command}, "requested_permissions": ["files", "notifications"], "data_dir": "data/" + app_id, "diagnostics_dir": "diagnostics/" + app_id, "handlers": [value for value in entry.get("MimeType", "").split(";") if value and not value.startswith("x-scheme-handler")], "unrestricted": True}
         self.registry.register(record)
+        for handler in record["handlers"]:
+            self.associations.set_default(handler, app_id)
         return record
 
     def launch(self, app_id: str) -> list[str]:
