@@ -7,8 +7,9 @@ from pathlib import Path
 import re
 import zipfile
 
-SECRET = re.compile(r"(?i)(token|password|secret|authorization)(\s*[:=]\s*)([^\s,]+)")
+SECRET = re.compile(r"(?i)(token|password|secret|authorization|api[_-]?key)([\"']?\s*[:=]\s*[\"']?)([^\s,\"']+)")
 URL_SECRET = re.compile(r"(?i)([?&](?:token|key|secret)=)[^&\s\"]+")
+URL_CREDENTIALS = re.compile(r"(?i)(https?://)[^/\s:@]+:[^@/\s]+@")
 
 
 class Diagnostics:
@@ -22,9 +23,10 @@ class Diagnostics:
         result = result.replace(str(self.state_dir), "<state>")
         username = os.environ.get("USERNAME") or os.environ.get("USER")
         if username:
-            result = result.replace(username, "<user>")
+            result = re.sub(r"(?<![\w.-])" + re.escape(username) + r"(?![\w.-])", "<user>", result)
         result = SECRET.sub(lambda match: match.group(1) + match.group(2) + "<redacted>", result)
-        return URL_SECRET.sub(lambda match: match.group(1) + "<redacted>", result)
+        result = URL_SECRET.sub(lambda match: match.group(1) + "<redacted>", result)
+        return URL_CREDENTIALS.sub(r"\1<redacted>@", result)
 
     def create(self, target: Path) -> Path:
         target.parent.mkdir(parents=True, exist_ok=True)
