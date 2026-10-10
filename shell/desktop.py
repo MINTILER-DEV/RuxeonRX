@@ -38,11 +38,21 @@ class Desktop:
         self.tabs.pack(fill="both", expand=True, padx=12)
         self.app_frame = ttk.Frame(self.tabs, padding=12)
         self.permission_frame = ttk.Frame(self.tabs, padding=12)
-        self.settings_frame = ttk.Frame(self.tabs, padding=12)
+        self.settings_tab = ttk.Frame(self.tabs)
+        settings_canvas = tk.Canvas(self.settings_tab, highlightthickness=0)
+        settings_scroll = ttk.Scrollbar(self.settings_tab, orient="vertical", command=settings_canvas.yview)
+        settings_canvas.configure(yscrollcommand=settings_scroll.set)
+        settings_scroll.pack(side="right", fill="y")
+        settings_canvas.pack(side="left", fill="both", expand=True)
+        self.settings_frame = ttk.Frame(settings_canvas, padding=12)
+        settings_window = settings_canvas.create_window(0, 0, window=self.settings_frame, anchor="nw")
+        self.settings_frame.bind("<Configure>", lambda event: settings_canvas.configure(scrollregion=settings_canvas.bbox("all")))
+        settings_canvas.bind("<Configure>", lambda event: settings_canvas.itemconfigure(settings_window, width=event.width))
+        self.settings_canvas = settings_canvas
         self.support_frame = ttk.Frame(self.tabs, padding=12)
         self.tabs.add(self.app_frame, text="Applications")
         self.tabs.add(self.permission_frame, text="Permissions")
-        self.tabs.add(self.settings_frame, text="Settings")
+        self.tabs.add(self.settings_tab, text="Settings")
         self.tabs.add(self.support_frame, text="Diagnostics & recovery")
         self.build_apps()
         self.build_permissions()
@@ -195,12 +205,20 @@ class Desktop:
         self.scale = tk.DoubleVar(value=settings["appearance.text_scale"])
         ttk.Spinbox(self.settings_frame, from_=0.75, to=3.0, increment=0.25, textvariable=self.scale, width=10).pack(anchor="w")
         ttk.Button(self.settings_frame, text="Apply scale", command=lambda: self.setting("appearance.text_scale", self.scale.get())).pack(anchor="w", pady=10)
+        channel = tk.StringVar(value=settings["updates.channel"])
+        ttk.Label(self.settings_frame, text="Update channel preference").pack(anchor="w")
+        chooser = ttk.Combobox(self.settings_frame, textvariable=channel, values=("stable", "testing"), state="readonly", width=12)
+        chooser.pack(anchor="w")
+        chooser.bind("<<ComboboxSelected>>", lambda event: self.setting("updates.channel", channel.get()))
         ttk.Label(self.settings_frame, text="Sources are explicitly trusted by you. Packages are checksum verified.").pack(anchor="w", pady=10)
         ttk.Button(self.settings_frame, text="Add software source…", command=self.add_source).pack(anchor="w")
         ttk.Button(self.settings_frame, text="View sources", command=lambda: messagebox.showinfo("Sources", json.dumps(self.client.call("sources"), indent=2))).pack(anchor="w", pady=10)
         ttk.Button(self.settings_frame, text="Install from source…", command=self.source_install).pack(anchor="w")
+        ttk.Button(self.settings_frame, text="Check app updates…", command=self.check_updates).pack(anchor="w", pady=10)
         ttk.Button(self.settings_frame, text="Default handlers…", command=self.default_handlers).pack(anchor="w", pady=10)
         self.apply_style(settings)
+        for widget in self.settings_frame.winfo_children():
+            widget.bind("<FocusIn>", lambda event, w=widget: self.settings_canvas.yview_moveto(max(0, w.winfo_y() - 30) / max(1, self.settings_frame.winfo_height())), add="+")
 
     def setting(self, key, value):
         result = self.call("set", key=key, value=value)
@@ -243,6 +261,15 @@ class Desktop:
         if app_id:
             handler = simpledialog.askstring("Default application", "MIME type or protocol (for example text/plain):", parent=self.root)
             if handler: self.call("default", app_id=app_id, handler=handler)
+
+    def check_updates(self):
+        updates = self.call("updates")
+        if updates is None: return
+        if not updates: messagebox.showinfo("Updates", "Your managed apps are up to date.", parent=self.root); return
+        for update in updates:
+            if messagebox.askyesno("Update app", update["app_id"] + ": " + update["installed"] + " → " + update["available"] + ". Update?", parent=self.root):
+                self.call("source-install", name=update["source"], app_id=update["app_id"], update=True)
+        self.refresh()
 
     def build_support(self):
         for label, command in (("Device diagnostics", self.devices), ("Export support bundle…", self.bundle), ("Create recovery snapshot…", self.snapshot), ("Restore snapshot…", self.restore), ("Start safe mode next login", self.safe), ("Exit safe mode next login", self.exit_safe)):
@@ -306,6 +333,7 @@ class Desktop:
             print("RX_GRAPHICAL_SESSION=ready", flush=True)
             Path(os.environ["RX_RUNTIME"], "graphical-ready").write_text("ready\n")
             self.root.focus_force()
+        else: self.root.after(500, self.ready)
 
     def run(self):
         self.root.mainloop()

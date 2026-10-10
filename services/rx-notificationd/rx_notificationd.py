@@ -23,7 +23,7 @@ class NotificationCenter:
             return False
         entries = self._read()
         entries.append({"app_id": app_id, "title": title, "body": body})
-        self._write(entries)
+        self._write(entries[-100:])
         return True
 
     def list(self) -> list[dict]:

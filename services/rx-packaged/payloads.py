@@ -149,4 +149,7 @@ class PackageManager(LegacyPackageManager):
             source.write_bytes(data)
             if self.digest(source) != entry["sha256"]:
                 raise ValueError("source checksum mismatch")
+            prepared = self._prepare(source)
+            if prepared["id"] != app_id or (entry.get("version") and prepared["version"] != entry["version"]):
+                raise ValueError("source package identity does not match catalog")
             return self.update(source) if update else self.install(source)

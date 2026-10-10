@@ -11,7 +11,7 @@ Success: `{"ok":true,"result":[]}`. Failure:
 
 Controller methods: apps, install, update, repair, rollback, inspect, import,
 remove, launch, decide, pending, answer, settings, set, notifications, devices,
-defaults, default, open-with, sources, source, catalog, source-install, snapshot,
+defaults, default, open-with, sources, source, catalog, source-install, updates, snapshot,
 snapshots, restore, bundle, health. The app endpoint supports only request and
 result; tokens are bound to installed apps and revoked when the process exits.
 `request` declares files/notifications and returns a request ID. `result` returns

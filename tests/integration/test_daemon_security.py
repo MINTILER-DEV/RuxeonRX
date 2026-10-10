@@ -29,5 +29,8 @@ class DaemonTest(unittest.TestCase):
                 with self.assertRaises(RuntimeError): portal.call("decide", app_id=app["id"], capability="files", allowed=True)
                 with self.assertRaises(RuntimeError): portal.call("request", token="forged", capability="files")
                 self.assertEqual({}, admin.call("inspect", app_id=app["id"])["permissions"])
+                self.assertTrue((root / "home/.local/share/applications" / ("ruxeonrx-" + app["id"] + ".desktop")).exists())
+                admin.call("remove", app_id=app["id"], purge_data=True)
+                self.assertFalse((root / "home/.local/share/applications" / ("ruxeonrx-" + app["id"] + ".desktop")).exists())
             finally:
                 daemon.terminate(); daemon.wait(timeout=5)

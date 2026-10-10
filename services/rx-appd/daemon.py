@@ -26,6 +26,9 @@ class DesktopService:
         self.state = state
         self.runtime = runtime
         self.manager = AppManager(state)
+        if not self.manager.packages.sources():
+            catalog = ROOT / "packages/catalog/index.json"
+            if catalog.exists(): self.manager.packages.add_source("ruxeonrx-samples", catalog.as_uri())
         self.settings = Settings(state)
         self.notifications = NotificationCenter(state)
         self.tokens = {}
@@ -125,6 +128,14 @@ class DesktopService:
             return self.dispatch("launch", {"app_id": app_id})
         if method == "default": return m.set_default_handler(p["app_id"], p["handler"])
         if method == "sources": return m.packages.sources()
+        if method == "updates":
+            result = []
+            for app in m.registry.list():
+                if app["source"] in m.packages.sources():
+                    matches = [item for item in m.packages.catalog(app["source"]) if item["id"] == app["id"]]
+                    if matches and matches[-1].get("version") != app["version"]:
+                        result.append({"app_id": app["id"], "source": app["source"], "installed": app["version"], "available": matches[-1].get("version")})
+            return result
         if method == "source": return m.packages.add_source(p["name"], p["url"])
         if method == "catalog": return m.packages.catalog(p["name"])
         if method == "source-install":
@@ -143,7 +154,16 @@ class DesktopService:
         if method == "bundle": return str(Diagnostics(self.state, DeviceInventory().collect()).create(Path(p["path"])))
         if method == "health":
             self.reap()
-            return {"healthy": True, "mode": self.mode, "pid": os.getpid(), "apps_running": [name for name, proc in self.processes.items() if proc.poll() is None]}
+            services = {"rx-appd": os.getpid()}
+            session_path = self.state / "session.json"
+            if session_path.is_file():
+                try: services.update(json.loads(session_path.read_text()).get("pids", {}))
+                except json.JSONDecodeError: pass
+            alive = {}
+            for name, pid in services.items():
+                try: os.kill(pid, 0); alive[name] = True
+                except (ProcessLookupError, PermissionError): alive[name] = False
+            return {"healthy": all(alive.values()), "mode": "safe" if (self.state / "safe-mode").exists() else "normal", "pid": os.getpid(), "services": alive, "apps_running": [name for name, proc in self.processes.items() if proc.poll() is None]}
         raise ValueError("unknown method: " + method)
 
 

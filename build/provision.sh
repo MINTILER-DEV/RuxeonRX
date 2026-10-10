@@ -40,6 +40,7 @@ systemctl set-default graphical.target
 systemctl enable lightdm
 install -d /etc/systemd/system/lightdm.service.d
 printf '[Service]\nExecStartPre=/usr/bin/python3 /opt/RuxeonRX/tools/rx-boot.py\n' > /etc/systemd/system/lightdm.service.d/ruxeonrx.conf
+systemctl daemon-reload
 dpkg-query -W -f='${Package}=${Version}\n' > /etc/ruxeonrx/packages.lock
 apt-get clean
 rm -f /tmp/ruxeonrx-source.tar.gz

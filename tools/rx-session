@@ -25,6 +25,12 @@ try:
     children["openbox"] = wm
     commands = {"rx-appd": [sys.executable, str(ROOT / "services/rx-appd/daemon.py"), "--state", str(state), "--runtime", str(runtime)], "rx-shell": [sys.executable, str(ROOT / "shell/desktop.py")]}
     while True:
+        if children["openbox"].poll() is not None:
+            crashes += 1
+            if crashes >= 3: (state / "safe-mode").touch()
+            if crashes >= 6: raise RuntimeError("window manager restart budget exhausted")
+            with (log_dir / "openbox.log").open("ab") as log:
+                children["openbox"] = subprocess.Popen(["openbox"], stdout=log, stderr=subprocess.STDOUT)
         for name, command in commands.items():
             proc = children.get(name)
             if proc is None or proc.poll() is not None:
