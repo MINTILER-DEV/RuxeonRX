@@ -6,7 +6,7 @@ from tkinter import ttk
 from rxipc import Client
 
 root = tk.Tk()
-root.title("RX Notes")
+root.title(os.environ.get("RX_APP_NAME", "RX Notes"))
 root.geometry("600x400")
 client = Client(Path(os.environ["RX_PORTAL_DIR"]) / "portal.sock")
 token = os.environ["RX_TOKEN"]
@@ -15,10 +15,18 @@ text = tk.Text(root, wrap="word", font=("DejaVu Sans", 12))
 
 
 def request(capability):
-    request_id = client.call("request", token=token, capability=capability)
+    try:
+        request_id = client.call("request", token=token, capability=capability)
+    except Exception as error:
+        status.set(str(error))
+        return
     status.set("Waiting for permission in the RuxeonRX shell…")
     def poll():
-        answer = client.call("result", token=token, request_id=request_id)
+        try:
+            answer = client.call("result", token=token, request_id=request_id)
+        except Exception as error:
+            status.set(str(error))
+            return
         if answer.get("pending"):
             root.after(200, poll)
         else:

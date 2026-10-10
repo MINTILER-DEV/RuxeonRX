@@ -32,6 +32,19 @@ def window(name):
     return answer.stdout.strip().splitlines()[0] if answer.returncode == 0 else None
 
 
+def click_app(window_id, offset):
+    xdo("windowactivate", "--sync", window_id)
+    geometry = dict(line.split("=", 1) for line in xdo("getwindowgeometry", "--shell", window_id).splitlines() if "=" in line)
+    xdo("mousemove", str(int(geometry["X"]) + offset), str(int(geometry["Y"]) + 30))
+    xdo("click", "1")
+
+
+def permission(allowed):
+    prompt = wait(lambda: window("RuxeonRX permission"), "user-visible portal permission prompt")
+    xdo("windowactivate", "--sync", prompt)
+    xdo("key", "--clearmodifiers", "alt+y" if allowed else "alt+n")
+
+
 def main(phase):
     runtime = Path(os.environ["RX_RUNTIME"])
     client = Client(runtime / "appd.sock")
@@ -57,16 +70,32 @@ def main(phase):
         xdo("key", "--clearmodifiers", "ctrl+l")
         notes = wait(lambda: window("RX Notes"), "real native Notes process and window")
         # Trigger notification by clicking the real application control.
-        geometry = dict(line.split("=", 1) for line in xdo("getwindowgeometry", "--shell", notes).splitlines() if "=" in line)
-        xdo("mousemove", str(int(geometry["X"]) + 245), str(int(geometry["Y"]) + 30)); xdo("click", "1")
-        prompt = wait(lambda: window("RuxeonRX permission"), "user-visible portal permission prompt")
-        xdo("windowactivate", "--sync", prompt); xdo("key", "alt+n")
+        click_app(notes, 245)
+        permission(False)
         wait(lambda: client.call("inspect", app_id=app_id)["permissions"].get("notifications") is False, "denied notification")
-        xdo("windowactivate", "--sync", notes)
-        xdo("mousemove", str(int(geometry["X"]) + 245), str(int(geometry["Y"]) + 30)); xdo("click", "1")
-        prompt = wait(lambda: window("RuxeonRX permission"), "second portal prompt")
-        xdo("windowactivate", "--sync", prompt); xdo("key", "alt+y")
+        click_app(notes, 245)
+        permission(True)
         wait(lambda: client.call("notifications"), "notification delivery after permission")
+        click_app(notes, 65)
+        permission(False)
+        wait(lambda: client.call("inspect", app_id=app_id)["permissions"].get("files") is False, "file access denial")
+        document = Path.home() / "portal-acceptance.txt"
+        document.write_text("A document outside the sandbox, opened only with consent.\n")
+        click_app(notes, 65)
+        permission(True)
+        chooser = wait(lambda: window("Open"), "controlled native file picker")
+        xdo("windowactivate", "--sync", chooser)
+        xdo("key", "alt+n"); xdo("type", "--clearmodifiers", str(document)); xdo("key", "Return")
+        wait(lambda: str(document) in client.call("inspect", app_id=app_id)["file_grants"], "specific file grant through picker")
+        # The same portal contract also works for a regular, unsandboxed native app.
+        regular_id = "org.ruxeonrx.regular-notes"
+        client.call("install", path=str(ROOT / "packages/catalog/rx-notes-native-0.1.0.rxpkg"))
+        client.call("launch", app_id=regular_id)
+        regular = wait(lambda: window("RX Notes Native"), "regular native application window")
+        click_app(regular, 245)
+        permission(True)
+        wait(lambda: any(item["app_id"] == regular_id for item in client.call("notifications")), "regular native portal notification")
+        client.call("remove", app_id=regular_id, purge_data=True)
         client.call("update", path=str(ROOT / "packages/catalog/rx-notes-0.2.0.rxpkg"))
         assert client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0"
         client.call("rollback", app_id=app_id)

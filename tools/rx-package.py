@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the two offline native packages and SHA-256 catalog."""
+"""Build sandboxed and regular native samples and the SHA-256 catalog."""
 import hashlib
 import json
 from pathlib import Path
@@ -9,11 +9,13 @@ ROOT = Path(__file__).resolve().parents[1]
 target = ROOT / "packages" / "catalog"
 target.mkdir(parents=True, exist_ok=True)
 entries = []
-for version in ("0.1.0", "0.2.0"):
+for version, sandbox in (("0.1.0", True), ("0.2.0", True), ("0.1.0", False)):
     manifest = json.loads((ROOT / "packages/native-test-app/manifest.json").read_text())
-    manifest.update(version=version, launch={"command": ["python3", "{package}/main.py"]}, sandbox=True, icon="notes.svg")
+    manifest.update(version=version, launch={"command": ["python3", "{package}/main.py"]}, sandbox=sandbox, icon="notes.svg")
     manifest["name"] = "RX Notes"
-    package = target / f"rx-notes-{version}.rxpkg"
+    if not sandbox:
+        manifest.update(id="org.ruxeonrx.regular-notes", name="RX Notes Native", handlers=[])
+    package = target / f"{'rx-notes' if sandbox else 'rx-notes-native'}-{version}.rxpkg"
     with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("manifest.json", json.dumps(manifest, sort_keys=True))
         archive.write(ROOT / "sdk/samples/desktop_app.py", "main.py")

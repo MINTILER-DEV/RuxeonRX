@@ -73,7 +73,7 @@ class AppManager:
         command = [part.replace("{package}", app["package"]["root"]) for part in self.launch(app_id)]
         data_dir = self.state_dir / "data" / app_id
         data_dir.mkdir(parents=True, exist_ok=True)
-        env = {**os.environ, **(environment or {}), "RX_APP_ID": app_id, "RX_DATA_DIR": str(data_dir)}
+        env = {**os.environ, **(environment or {}), "RX_APP_ID": app_id, "RX_APP_NAME": app["name"], "RX_DATA_DIR": str(data_dir)}
         if sandbox:
             if not shutil.which("bwrap"):
                 raise RuntimeError("bubblewrap is required for sandboxed packages")
