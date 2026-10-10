@@ -1,89 +1,38 @@
 # Development quick start
 
-Run these commands on the Linux build server, not on the Windows control
-laptop.  The scripts never require root after dependencies are installed.
+See [desktop-alpha.md](desktop-alpha.md) for prerequisites, build details,
+Windows launch, real guest acceptance and the external tester checklist.
 
-## Prerequisites
-
-Install a static BusyBox, QEMU x86 system emulator, a Linux kernel that the
-build user can read, GNU cpio, gzip, and Python 3.  On Debian-family hosts:
+On the Linux server:
 
 ```sh
-sudo apt-get update
-sudo apt-get install --yes build-essential busybox-static qemu-system-x86 cpio gzip python3 debootstrap
-```
-
-`debootstrap` is pinned by the host's configured Debian stable repository and
-is reserved for the next rootfs-composition step.  The image uses no network
-downloads during its build and compiles a small static framebuffer shell.
-
-Some distributions protect `/boot/vmlinuz-*` from non-root accounts.  Make a
-read-only build copy once, then select it explicitly:
-
-```sh
-sudo install -D -m 0644 /boot/vmlinuz-"$(uname -r)" "$HOME/.cache/ruxeonrx/vmlinuz"
-export RX_KERNEL_IMAGE="$HOME/.cache/ruxeonrx/vmlinuz"
-```
-
-## Build and test
-
-```sh
-./tools/rx-build bootstrap  # checks prerequisites; does not install packages
+sudo apt-get install qemu-system-x86 qemu-utils xorriso openssh-client python3
+cd ~/RuxeonRX
+./tools/rx-build bootstrap
 ./tools/rx-build build
-./tools/rx-build run        # interactive serial console
-./tools/rx-build safe       # recovery session with minimal startup policy
-./tools/rx-build test       # non-interactive QEMU health check
-./tools/rx-build doctor     # JSON prerequisite and acceleration report
-./tools/rx-build bundle     # scrubbed diagnostic archive in out/
+./tools/rx-build test
+./tools/rx-build run --vnc
 ```
 
-Set `RX_NO_KVM=1` when hardware virtualization is unavailable.  Artifacts and
-logs live under `out/`; `./tools/rx-build clean` removes only that directory.
-
-`run` exposes the framebuffer session over VNC on the Linux server's loopback
-port 5901. From Windows, use a second PowerShell window to forward it:
+For remote display from Windows, forward the server's loopback VNC port:
 
 ```powershell
-ssh -L 5901:127.0.0.1:5901 mntweb@192.168.1.101
+ssh -N -L 5901:127.0.0.1:5901 mntweb@192.168.1.101
 ```
 
-Then open `localhost:5901` in a VNC viewer. The serial terminal provides the
-early session commands, including `rx-demo install`, `rx-demo decide allow`,
-`rx-demo launch`, and `rx-demo remove`.
+Connect a VNC viewer to localhost:5901. To run locally on Windows, copy the
+single built qcow2 disk and use `tools/run-windows.ps1`.
 
-## Native-app vertical slice
+The desktop image includes its own kernel and bootloader. There is no host
+kernel permission workaround or initramfs argument to configure.
+
+Run code tests with:
 
 ```sh
 python3 -m unittest discover -s tests/unit -v
 python3 -m unittest discover -s tests/integration -v
 ```
 
-The test creates temporary state, registers the sample manifest, grants a file
-and notification capability, verifies launcher discovery and diagnostic logs,
-then removes the app and confirms no stale record remains.
-
-## RX 0.2 desktop-spine demonstration
-
-`rxctl` is the command interface used by the early session shell and its tests.
-It makes the complete native lifecycle inspectable before the graphical App
-Manager gains its final UI toolkit:
-
-```sh
-state="$(mktemp -d)"
-./tools/rxctl --state "$state" install packages/native-test-app/manifest.json
-./tools/rxctl --state "$state" apps --query native
-./tools/rxctl --state "$state" decide org.ruxeonrx.native-test-app notifications allow
-./tools/rxctl --state "$state" launch org.ruxeonrx.native-test-app
-./tools/rxctl --state "$state" inspect org.ruxeonrx.native-test-app
-./tools/rxctl --state "$state" remove org.ruxeonrx.native-test-app --purge-data
-```
-
-RX 0.3 adds `add-source`, `sources`, `update`, `repair`, `rollback`,
-`set-default`, `defaults`, `permissions`, and `grant-file`. See
-[`docs/releases/rx-0.3.md`](../releases/rx-0.3.md) for the full transaction
-and recovery contract.
-
-RX 0.4/0.5 add `session-start`, `session-health`, `session-recover`, `settings`,
-`set`, `devices`, `snapshot`, `restore`, `snapshots`, and `support-bundle`.
-Release contracts are documented in [`rx-0.4.md`](../releases/rx-0.4.md) and
-[`rx-0.5.md`](../releases/rx-0.5.md).
+In a guest terminal, `tools/rxctl` connects to the session daemon for app and
+permission changes. Offline tests use isolated temporary state. App launch in
+the graphical session starts a process, not a simulated command log.

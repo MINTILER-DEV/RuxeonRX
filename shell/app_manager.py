@@ -146,7 +146,10 @@ class AppManager:
 
     def logs(self, app_id: str) -> list[str]:
         path = self.log_root / app_id / "activity.log"
-        return path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+        lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+        process = self.log_root / app_id / "process.log"
+        if process.exists(): lines += process.read_text(encoding="utf-8", errors="replace").splitlines()
+        return lines
 
     def remove(self, app_id: str, *, purge_data: bool = False) -> bool:
         app = self.registry.get(app_id)

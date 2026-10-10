@@ -65,3 +65,15 @@ class RealPackageTest(unittest.TestCase):
             catalog["packages"][0]["sha256"] = hashlib.sha256(package.read_bytes()).hexdigest()
             index.write_text(json.dumps(catalog))
             self.assertEqual(app_id, manager.packages.from_source("test", app_id)["id"])
+
+    def test_failed_executable_update_keeps_previous_payload_and_permissions(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); manager = AppManager(root / "state")
+            app = manager.install_manifest(self.package(root))
+            manager.decide(app["id"], "notifications", True)
+            invalid = self.package(root, "2", "def broken(:")
+            with self.assertRaises(ValueError): manager.update(invalid)
+            details = manager.inspect(app["id"])
+            self.assertEqual("1", details["app"]["version"])
+            self.assertTrue(details["permissions"]["notifications"])
+            self.assertEqual(0, manager.execute(app["id"]).wait(timeout=10))

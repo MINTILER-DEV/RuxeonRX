@@ -1,19 +1,22 @@
-# RX 0.5: Usable alpha
+# RX 0.5: Native graphical alpha
 
-RX 0.5 provides a repeatable daily-QEMU workflow and recovery/diagnostic tools
-for early testers.
+The complete guest replaces the old framebuffer demonstration with a Debian
+13 desktop disk and interactive RuxeonRX session. It includes real executable
+packages, service IPC, portal dialogs and the native lifecycle from RX 0.2/0.3.
 
-- The image identifies itself as `0.5.0-alpha` and boots normal, test, or safe
-  sessions.
-- A 64 MiB ext4 state disk persists guest state across QEMU runs. If it cannot
-  mount, the session clearly reports volatile fallback state.
-- `rx-build doctor` reports prerequisites, kernel selection, and KVM access.
-- Named recovery snapshots preserve service/application state and restore only
-  path-safe archive members.
-- Support bundles include a narrow allowlist of service state and diagnostics;
-  home/state paths, usernames, and common secret fields are redacted.
-- Automated tests cover the complete RX 0.2–0.5 lifecycle and QEMU requires
-  session, persistence-state, app-launch, and health signals.
+The alpha has persistent guest storage, supervised appd/shell processes with
+restart budgets, recovery mode, accessibility preferences, device inventory,
+checksum-verified source downloads, immutable version caches, repair archives,
+atomic update/rollback registry history, exact state snapshots and support
+export. Build inputs are locked and package versions recorded.
 
-This remains an alpha image: the framebuffer shell and command-backed App
-Manager are functional prototypes, not the final compositor or visual design.
+Acceptance runs in a disposable overlay and boots twice. It requires visible
+shell/app windows, keyboard/mouse interaction, denied/allowed notification
+prompts, app updates and persistence across reboot. Unit/integration tests
+exercise actual payload output, tamper recovery and package/portal/snapshot
+security boundaries. Evidence lives in out/desktop.
+
+Use [the developer/tester guide](../development/desktop-alpha.md) and
+[the support/security matrix](../development/test-matrix.md). This release
+is scoped to QEMU native apps. External testers must record real feedback;
+CI cannot satisfy that human release gate by itself.

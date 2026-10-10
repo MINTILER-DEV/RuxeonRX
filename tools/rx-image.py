@@ -44,10 +44,11 @@ def build(args):
     if hashlib.file_digest(base.open("rb"), "sha512").hexdigest() != lock["sha512"]:
         raise RuntimeError("base checksum mismatch")
     disk = OUT / "ruxeonrx-0.5.qcow2"
-    if disk.exists():
+    if disk.exists() and not args.refresh:
         raise RuntimeError("disk exists; archive it before rebuilding (persistent user state is never overwritten)")
-    run("qemu-img", "convert", "-O", "qcow2", str(base), str(disk))
-    run("qemu-img", "resize", str(disk), "12G")
+    if not disk.exists():
+        run("qemu-img", "convert", "-O", "qcow2", str(base), str(disk))
+        run("qemu-img", "resize", str(disk), "12G")
     key = OUT / "builder-key"
     if not key.exists():
         run("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key))
@@ -90,5 +91,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--accel", choices=("tcg", "kvm"), default="tcg")
     parser.add_argument("--port", type=int, default=2225)
+    parser.add_argument("--refresh", action="store_true", help="update project files in the existing development image, preserving guest user data")
     args = parser.parse_args()
     build(args)

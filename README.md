@@ -1,47 +1,44 @@
 # RuxeonRX
 
-RuxeonRX is a compatibility-first Linux desktop platform.  It presents native
-Linux, Windows, Android, web, and virtual-machine applications through one
-launcher, permissions model, and application manager.
+RuxeonRX is a Linux desktop operating system project. RX 0.5 targets a native
+x86_64 QEMU desktop alpha; later releases add web, Android and Windows runtimes.
 
-This repository implements the RX 0.5 usable alpha, including the RX 0.2
-desktop spine and RX 0.3 native-app experience:
+The desktop disk contains a pinned Debian 13 base, Linux kernel, systemd,
+LightDM, Openbox window management, an interactive RuxeonRX shell, and the app,
+portal, notification, package, settings, recovery and diagnostic services.
+RX Notes is a real native application installed from an executable package.
 
-- `tools/rx-build` builds and smoke-tests a bootable, serial-console Linux
-  proof image on a Linux host;
-- the boot image starts a minimal framebuffer `rx-shell` session;
-- `rx-appd` is the only writer of normalized app registry records;
-- `rx-portald` persists explicit capability decisions;
-- the App Manager exposes install, launch, inspect, diagnostics, and removal;
-- the notification center is permission mediated; and
-- native-app integration tests exercise install, discover, launch, deny/allow,
-  notification, diagnostics, and cleanup end to end.
-- RX 0.3 adds explicit sources, transactional update/rollback/repair, package
-  checksum caching, MIME/protocol defaults, per-file grants, storage reporting,
-  and removal cleanup.
-- RX 0.4 adds supervised services, crash-triggered safe mode, validated
-  accessibility/privacy settings, and device diagnostics.
-- RX 0.5 adds persistent QEMU state, recovery snapshots, a build doctor, and
-  privacy-scrubbed support bundles for external alpha testing.
+## Run on Windows
 
-## Quick start (Linux build server)
+With the built disk at `out/desktop/ruxeonrx-0.5.qcow2` and QEMU on PATH:
 
-Read [the development guide](docs/development/quickstart.md), then run:
+```powershell
+.\tools\run-windows.ps1
+```
+
+Use the graphical Applications tab to install RX Notes, search, launch, update,
+repair, roll back and remove it. Its Open file and Send notification controls
+request permission through the desktop. Settings, permissions, logs, software
+sources, default handlers, recovery and support export are available in the UI.
+
+## Build and test on Linux
 
 ```sh
 ./tools/rx-build bootstrap
 ./tools/rx-build build
 ./tools/rx-build test
-python3 -m unittest discover -s tests/unit -v
+./tools/rx-build run --vnc
 ```
 
-The QEMU image is an early framebuffer desktop alpha, not yet an installable
-hardware ISO. It emits `RX_HEALTH=ok` only after the session and native-app
-smoke flow succeed.
+Read [the complete build/run guide](docs/development/desktop-alpha.md),
+[the support matrix](docs/development/test-matrix.md), and
+[the security model](docs/security/threat-model.md).
 
-## Layout
+Desktop acceptance requires real windows and permission interaction, then
+reboots the guest and verifies persistence. Logs and screenshots stay in
+`out/desktop/`. Generated disks, caches and private keys are never committed.
+The earlier BusyBox health image is archived as `tools/rx-health-build` and
+is not the desktop release.
 
-The implementation follows the repository shape described in the roadmap.
-Generated artifacts are written to `out/` and are never committed.  Public
-contracts live under `sdk/spec/`; architecture choices are recorded in
-`docs/architecture/adr/`.
+External tester feedback remains a release gate. The issue template includes
+an explicit checklist for documenting that feedback.

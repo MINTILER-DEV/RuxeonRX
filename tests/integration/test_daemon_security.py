@@ -18,7 +18,7 @@ class DaemonTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             runtime = root / "run"
-            daemon = subprocess.Popen([sys.executable, str(ROOT / "services/rx-appd/daemon.py"), "--state", str(root / "state"), "--runtime", str(runtime)], stdout=subprocess.DEVNULL)
+            daemon = subprocess.Popen([sys.executable, str(ROOT / "services/rx-appd/daemon.py"), "--state", str(root / "state"), "--runtime", str(runtime)], stdout=subprocess.DEVNULL, env={**os.environ, "HOME": str(root / "home")})
             try:
                 limit = time.monotonic() + 10
                 while not (runtime / "appd.sock").exists() and time.monotonic() < limit: time.sleep(0.05)

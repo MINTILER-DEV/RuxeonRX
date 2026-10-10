@@ -90,8 +90,9 @@ class Desktop:
         self.tree.bind("<Double-1>", lambda event: self.launch())
         controls = ttk.Frame(self.app_frame)
         controls.pack(fill="x", pady=8)
-        for label, command in (("Launch", self.launch), ("Update…", self.update), ("Sample update", self.update_sample), ("Repair", lambda: self.operation("repair")), ("Roll back", lambda: self.operation("rollback")), ("Remove", self.remove), ("Import .desktop…", self.import_desktop)):
-            ttk.Button(controls, text=label, command=command).pack(side="left", padx=2)
+        for index, (label, command) in enumerate((("Launch", self.launch), ("Update…", self.update), ("Sample update", self.update_sample), ("Repair", lambda: self.operation("repair")), ("Roll back", lambda: self.operation("rollback")), ("Remove", self.remove), ("Import .desktop…", self.import_desktop), ("View logs", self.view_logs))):
+            ttk.Button(controls, text=label, command=command).grid(row=index // 4, column=index % 4, padx=3, pady=3, sticky="ew")
+        for index in range(4): controls.columnconfigure(index, weight=1)
         self.details = tk.Text(self.app_frame, height=6, wrap="word", state="disabled", font=("DejaVu Sans", 10))
         self.details.pack(fill="x")
 
@@ -145,6 +146,13 @@ class Desktop:
 
     def operation(self, method):
         if self.selection: self.call(method, app_id=self.selection); self.refresh()
+
+    def view_logs(self):
+        if not self.selection: return
+        detail = self.client.call("inspect", app_id=self.selection)
+        dialog = tk.Toplevel(self.root); dialog.title("Application diagnostics"); dialog.geometry("720x450")
+        viewer = tk.Text(dialog, wrap="word", font=("DejaVu Sans Mono", 10)); viewer.pack(fill="both", expand=True)
+        viewer.insert("1.0", "\n".join(detail["logs"])); viewer.configure(state="disabled")
 
     def remove(self):
         if self.selection and messagebox.askyesno("Remove app", "Remove this app and its managed data?", parent=self.root):
@@ -294,6 +302,7 @@ class Desktop:
         if self.root.winfo_viewable() and self.client.call("health")["healthy"]:
             print("RX_GRAPHICAL_SESSION=ready", flush=True)
             Path(os.environ["RX_RUNTIME"], "graphical-ready").write_text("ready\n")
+            self.root.focus_force()
 
     def run(self):
         self.root.mainloop()

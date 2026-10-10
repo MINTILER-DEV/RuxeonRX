@@ -137,7 +137,9 @@ class DesktopService:
         if method == "restore":
             for process in self.processes.values():
                 if process.poll() is None: process.terminate(); process.wait(timeout=5)
-            return Recovery(self.state).restore(p["name"])
+            result = Recovery(self.state).restore(p["name"])
+            self.tokens.clear(); self.requests.clear()
+            return result
         if method == "bundle": return str(Diagnostics(self.state, DeviceInventory().collect()).create(Path(p["path"])))
         if method == "health":
             self.reap()

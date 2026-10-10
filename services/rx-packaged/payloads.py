@@ -31,6 +31,15 @@ class PackageManager(LegacyPackageManager):
                 manifest = json.loads(source.read_text(encoding="utf-8"))
                 shutil.copyfile(source, staging / "manifest.json")
             self.registry._validate(manifest)
+            for part in manifest["launch"]["command"]:
+                if part.startswith("{package}/"):
+                    relative = Path(part[len("{package}/"):])
+                    candidate = staging / relative
+                    if ".." in relative.parts or not candidate.is_file():
+                        raise ValueError("launch payload does not exist")
+                    if candidate.suffix == ".py":
+                        try: compile(candidate.read_text(encoding="utf-8"), str(relative), "exec")
+                        except SyntaxError as error: raise ValueError("invalid Python payload: " + str(error))
             hashes = {str(path.relative_to(staging)).replace("\\", "/"): self.digest(path) for path in staging.rglob("*") if path.is_file()}
             identity = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
             destination = self.cache / manifest["id"] / (manifest["version"] + "-" + identity[:16])
@@ -41,6 +50,8 @@ class PackageManager(LegacyPackageManager):
             blob = self.cache / (self.digest(source) + ".blob")
             if not blob.exists(): shutil.copyfile(source, blob)
             manifest["package"].update(blob=str(blob), blob_sha256=self.digest(source))
+            manifest["data_dir"] = str(self.state_dir / "data" / manifest["id"])
+            manifest["diagnostics_dir"] = str(self.state_dir / "diagnostics" / manifest["id"])
             return manifest
 
     def install(self, source):
