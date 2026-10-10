@@ -1,0 +1,42 @@
+#!/usr/bin/env python3
+"""Supervise real appd, shell and window manager child processes."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import time
+
+ROOT = Path(__file__).resolve().parents[1]
+state = Path.home() / ".local/state/ruxeonrx"
+state.mkdir(parents=True, exist_ok=True, mode=0o700)
+runtime = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp/rx-" + str(os.getuid()))) / "ruxeonrx"
+runtime.mkdir(parents=True, exist_ok=True, mode=0o700)
+os.environ.update(RX_STATE=str(state), RX_RUNTIME=str(runtime))
+log_dir = state / "session-logs"
+log_dir.mkdir(exist_ok=True)
+crashes = 0
+children = {}
+logs = []
+try:
+    with (log_dir / "openbox.log").open("ab") as log:
+        wm = subprocess.Popen(["openbox"], stdout=log, stderr=subprocess.STDOUT)
+    children["openbox"] = wm
+    commands = {"rx-appd": [sys.executable, str(ROOT / "services/rx-appd/daemon.py"), "--state", str(state), "--runtime", str(runtime)], "rx-shell": [sys.executable, str(ROOT / "shell/desktop.py")]}
+    while True:
+        for name, command in commands.items():
+            proc = children.get(name)
+            if proc is None or proc.poll() is not None:
+                if proc is not None:
+                    crashes += 1
+                    if crashes >= 3: (state / "safe-mode").touch()
+                    if crashes >= 6: raise RuntimeError("session restart budget exhausted; inspect session-logs")
+                if name == "rx-shell" and not (runtime / "appd.sock").exists(): continue
+                log = (log_dir / (name + ".log")).open("ab"); logs.append(log)
+                children[name] = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
+        (state / "session.json").write_text(json.dumps({"mode": "safe" if (state / "safe-mode").exists() else "normal", "crash_count": crashes, "services": {name: "running" if child.poll() is None else "failed" for name, child in children.items()}, "pids": {name: child.pid for name, child in children.items()}}))
+        time.sleep(1)
+finally:
+    for child in children.values():
+        if child.poll() is None: child.terminate()
+    for log in logs: log.close()

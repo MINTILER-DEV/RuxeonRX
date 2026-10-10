@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -26,15 +27,29 @@ class AppRegistry:
 
     @staticmethod
     def _validate(manifest: dict[str, Any]) -> None:
+        if not isinstance(manifest, dict):
+            raise ValueError("manifest must be an object")
         missing = REQUIRED - manifest.keys()
         if missing:
             raise ValueError(f"manifest missing: {', '.join(sorted(missing))}")
+        if not isinstance(manifest["id"], str) or not re.fullmatch(r"[a-z0-9]+(?:[.-][a-z0-9]+)+", manifest["id"]):
+            raise ValueError("invalid app ID")
+        if not isinstance(manifest["version"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.+_-]{0,63}", manifest["version"]):
+            raise ValueError("invalid version")
+        for field in ("name", "source", "data_dir", "diagnostics_dir"):
+            if not isinstance(manifest[field], str) or not manifest[field].strip():
+                raise ValueError(f"invalid {field}")
         if manifest["runtime_kind"] not in RUNTIMES:
             raise ValueError("unknown runtime kind")
         if not isinstance(manifest["requested_permissions"], list):
             raise ValueError("requested_permissions must be a list")
-        if not isinstance(manifest["launch"].get("command"), list) or not manifest["launch"]["command"]:
+        if not isinstance(manifest["launch"], dict) or not isinstance(manifest["launch"].get("command"), list) or not manifest["launch"]["command"] or not all(isinstance(item, str) and item and "\x00" not in item for item in manifest["launch"]["command"]):
             raise ValueError("launch.command must be a non-empty list")
+        allowed = {"files", "notifications", "camera", "microphone", "location", "clipboard", "screen-capture", "network", "background"}
+        if any(not isinstance(item, str) or item not in allowed for item in manifest["requested_permissions"]):
+            raise ValueError("unknown permission")
+        if not isinstance(manifest.get("handlers", []), list) or any(not isinstance(item, str) or not re.fullmatch(r"(?:[a-z]+/[a-z0-9.+-]+|[a-z][a-z0-9+.-]*:)", item) for item in manifest.get("handlers", [])):
+            raise ValueError("invalid handler")
 
     def register(self, manifest: dict[str, Any]) -> dict[str, Any]:
         self._validate(manifest)

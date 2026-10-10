@@ -2,6 +2,10 @@
 from __future__ import annotations
 
 import json
+import os
+import shlex
+import shutil
+import subprocess
 from pathlib import Path
 import sys
 from typing import Any
@@ -15,7 +19,7 @@ sys.path.insert(0, str(ROOT / "services" / "rx-associationd"))
 from rx_appd import AppRegistry
 from rx_portald import Portal
 from rx_notificationd import NotificationCenter
-from rx_packaged import PackageManager
+from payloads import PackageManager
 from rx_associationd import AssociationRegistry
 
 
@@ -39,6 +43,10 @@ class AppManager:
 
     def update(self, manifest_path: Path) -> dict[str, Any]:
         record = self.packages.update(manifest_path)
+        self.associations.remove_app(record["id"])
+        for capability in list(self.portal.decisions(record["id"])):
+            if capability not in record["requested_permissions"]:
+                self.portal.decide(record["id"], capability, False)
         for handler in record.get("handlers", []):
             self.associations.set_default(handler, record["id"])
         self._log(record["id"], f"updated to version {record['version']}")
@@ -46,12 +54,52 @@ class AppManager:
 
     def rollback(self, app_id: str) -> dict[str, Any]:
         record = self.packages.rollback(app_id)
+        self.associations.remove_app(app_id)
+        for handler in record.get("handlers", []):
+            self.associations.set_default(handler, app_id)
         self._log(app_id, f"rolled back to version {record['version']}")
         return record
 
     def repair(self, app_id: str) -> dict[str, Any]:
         record = self.packages.repair(app_id)
         self._log(app_id, f"repaired version {record['version']}")
+        return record
+
+    def execute(self, app_id: str, *, environment=None, sandbox=False) -> subprocess.Popen:
+        app = self.registry.get(app_id)
+        if app is None:
+            raise KeyError(app_id)
+        self.packages.verify(app)
+        command = [part.replace("{package}", app["package"]["root"]) for part in self.launch(app_id)]
+        data_dir = self.state_dir / "data" / app_id
+        data_dir.mkdir(parents=True, exist_ok=True)
+        env = {**os.environ, **(environment or {}), "RX_APP_ID": app_id, "RX_DATA_DIR": str(data_dir)}
+        if sandbox:
+            if not shutil.which("bwrap"):
+                raise RuntimeError("bubblewrap is required for sandboxed packages")
+            prefix = ["bwrap", "--die-with-parent", "--new-session", "--unshare-all", "--share-net" if "network" in app["requested_permissions"] and self.portal.allowed(app_id, "network") else "--unshare-net", "--ro-bind", "/usr", "/usr", "--symlink", "usr/bin", "/bin", "--symlink", "usr/lib", "/lib", "--symlink", "usr/lib64", "/lib64", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--ro-bind", "/etc", "/etc", "--ro-bind", app["package"]["root"], app["package"]["root"], "--bind", str(data_dir), str(data_dir), "--ro-bind", "/tmp/.X11-unix", "/tmp/.X11-unix", "--bind", env["RX_PORTAL_DIR"], env["RX_PORTAL_DIR"], "--setenv", "HOME", str(data_dir)]
+            authority = env.get("XAUTHORITY", str(Path.home() / ".Xauthority"))
+            if Path(authority).is_file():
+                prefix += ["--ro-bind", authority, authority, "--setenv", "XAUTHORITY", authority]
+            command = prefix + command
+        log_dir = self.log_root / app_id
+        log_dir.mkdir(parents=True, exist_ok=True)
+        with (log_dir / "process.log").open("ab") as output:
+            process = subprocess.Popen(command, cwd=data_dir, env=env, stdout=output, stderr=subprocess.STDOUT)
+        self._log(app_id, f"process started: {process.pid}")
+        return process
+
+    def import_desktop(self, path: Path) -> dict:
+        import configparser
+        parser = configparser.ConfigParser(interpolation=None)
+        parser.read(path, encoding="utf-8")
+        entry = parser["Desktop Entry"]
+        if entry.get("Type") != "Application":
+            raise ValueError("desktop entry is not an application")
+        command = [part for part in shlex.split(entry["Exec"]) if not part.startswith("%")]
+        app_id = "org.ruxeonrx.import." + path.stem.lower().replace("_", "-")
+        record = {"id": app_id, "name": entry.get("Name", path.stem), "version": "1", "source": "desktop-entry", "runtime_kind": "native-linux", "package_kind": "desktop-entry", "launch": {"command": command}, "requested_permissions": ["files", "notifications"], "data_dir": "data/" + app_id, "diagnostics_dir": "diagnostics/" + app_id, "handlers": [value for value in entry.get("MimeType", "").split(";") if value and not value.startswith("x-scheme-handler")], "unrestricted": True}
+        self.registry.register(record)
         return record
 
     def launch(self, app_id: str) -> list[str]:
@@ -108,11 +156,11 @@ class AppManager:
         self.associations.remove_app(app_id)
         self._log(app_id, "app removed")
         if purge_data:
-            log_dir = self.log_root / app_id
-            if log_dir.exists():
-                for child in log_dir.iterdir():
-                    child.unlink()
-                log_dir.rmdir()
+            for directory in (self.log_root / app_id, self.state_dir / "data" / app_id, self.state_dir / "package-cache" / app_id):
+                if directory.is_symlink():
+                    directory.unlink()
+                elif directory.exists():
+                    shutil.rmtree(directory)
         return True
 
     def _log(self, app_id: str, message: str) -> None:
