@@ -325,7 +325,8 @@ class Desktop:
                 allowed = messagebox.askyesno("RuxeonRX permission", request["app_id"] + " requests " + request["capability"] + ". Allow?", parent=self.root)
                 path = ""
                 if allowed and request["capability"] == "files":
-                    path = filedialog.askopenfilename(parent=self.root)
+                    suggested = Path(request.get("suggested_path", str(Path.home() / "document.txt")))
+                    path = filedialog.askopenfilename(parent=self.root, initialdir=str(suggested.parent), initialfile=suggested.name if request.get("suggested_path") else "")
                     allowed = bool(path)
                 answer = self.call("answer", id=request["id"], allowed=allowed, path=path)
                 if answer is None:

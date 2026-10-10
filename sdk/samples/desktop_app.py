@@ -20,6 +20,10 @@ def request(capability):
     except Exception as error:
         status.set(str(error))
         return
+    await_response(request_id)
+
+
+def await_response(request_id):
     status.set("Waiting for permission in the RuxeonRX shell…")
     def poll():
         try:
@@ -37,10 +41,25 @@ def request(capability):
     root.after(200, poll)
 
 
+seen_intents = set()
+
+
+def poll_intents():
+    try:
+        for intent in client.call("intents", token=token):
+            if intent["id"] not in seen_intents:
+                seen_intents.add(intent["id"])
+                await_response(intent["id"])
+    except Exception as error:
+        status.set(str(error))
+    root.after(500, poll_intents)
+
+
 toolbar = ttk.Frame(root, padding=12)
 toolbar.pack(fill="x")
 ttk.Button(toolbar, text="Open file…", command=lambda: request("files")).pack(side="left", padx=4)
 ttk.Button(toolbar, text="Send notification", command=lambda: request("notifications")).pack(side="left", padx=4)
 text.pack(fill="both", expand=True, padx=12)
 ttk.Label(root, textvariable=status, padding=12).pack(fill="x")
+root.after(500, poll_intents)
 root.mainloop()

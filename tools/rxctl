@@ -36,7 +36,7 @@ def main() -> int:
     rollback = actions.add_parser("rollback"); rollback.add_argument("app_id")
     repair = actions.add_parser("repair"); repair.add_argument("app_id")
     apps = actions.add_parser("apps"); apps.add_argument("--query", default="")
-    launch = actions.add_parser("launch"); launch.add_argument("app_id")
+    launch = actions.add_parser("launch"); launch.add_argument("app_id"); launch.add_argument("path", nargs="?")
     decide = actions.add_parser("decide"); decide.add_argument("app_id"); decide.add_argument("capability"); decide.add_argument("choice", choices=("allow", "deny"))
     notify = actions.add_parser("notify"); notify.add_argument("app_id"); notify.add_argument("title"); notify.add_argument("body")
     inspect = actions.add_parser("inspect"); inspect.add_argument("app_id")
@@ -67,7 +67,7 @@ def main() -> int:
             "apps": ("apps", {"query": getattr(args, "query", "")}),
             "install": ("install", {"path": str(getattr(args, "manifest", ""))}),
             "update": ("update", {"path": str(getattr(args, "manifest", ""))}),
-            "launch": ("launch", {"app_id": getattr(args, "app_id", "")}),
+            "launch": ("launch", {"app_id": getattr(args, "app_id", ""), "path": getattr(args, "path", None)}),
             "inspect": ("inspect", {"app_id": getattr(args, "app_id", "")}),
             "repair": ("repair", {"app_id": getattr(args, "app_id", "")}),
             "rollback": ("rollback", {"app_id": getattr(args, "app_id", "")}),

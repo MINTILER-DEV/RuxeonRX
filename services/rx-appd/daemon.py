@@ -42,6 +42,17 @@ class DesktopService:
             if process is None or process.poll() is not None:
                 self.tokens.pop(token, None)
 
+    def file_intent(self, app_id, filename):
+        app = self.manager.registry.get(app_id)
+        path = Path(filename).expanduser().resolve()
+        if "files" not in app["requested_permissions"]:
+            raise PermissionError("application does not support the file portal")
+        if not path.is_file() or path.stat().st_size > 1024 * 1024:
+            raise ValueError("choose a regular text file smaller than 1 MiB")
+        identifier = secrets.token_hex(16)
+        self.requests[identifier] = {"id": identifier, "app_id": app_id, "capability": "files", "pending": True, "origin": "open-with", "suggested_path": str(path)}
+        return identifier
+
     def portal(self, method, params):
         self.reap()
         app_id = self.tokens.get(params.get("token"))
@@ -62,6 +73,8 @@ class DesktopService:
             if not request or request["app_id"] != app_id:
                 raise PermissionError("unknown portal request")
             return request
+        if method == "intents":
+            return [{"id": item["id"]} for item in self.requests.values() if item["app_id"] == app_id and item.get("pending") and item.get("origin") == "open-with"]
         raise PermissionError("portal endpoint only accepts request/result")
 
     def dispatch(self, method, p):
@@ -104,12 +117,14 @@ class DesktopService:
             if app is None: raise ValueError("app is not installed")
             running = self.processes.get(app_id)
             if running and running.poll() is None:
+                if p.get("path"): self.file_intent(app_id, p["path"])
                 return {"pid": running.pid, "running": True}
             token = secrets.token_hex(32)
             env = {"RX_TOKEN": token, "RX_PORTAL_DIR": str(self.runtime / "portal")}
             process = m.execute(app_id, environment=env, sandbox=app.get("sandbox", False))
             self.processes[app_id] = process
             self.tokens[token] = app_id
+            if p.get("path"): self.file_intent(app_id, p["path"])
             return {"pid": process.pid}
         if method == "decide":
             m.decide(p["app_id"], p["capability"], p["allowed"])
@@ -143,7 +158,7 @@ class DesktopService:
         if method == "open-with":
             app_id = m.associations.defaults().get(p["handler"])
             if not app_id: raise ValueError("no default application for handler")
-            return self.dispatch("launch", {"app_id": app_id})
+            return self.dispatch("launch", {"app_id": app_id, "path": p.get("path")})
         if method == "default": return m.set_default_handler(p["app_id"], p["handler"])
         if method == "sources": return m.packages.sources()
         if method == "updates":
