@@ -55,6 +55,12 @@ class AppRegistry:
                 raise ValueError(f"invalid {field}")
         if manifest["runtime_kind"] not in RUNTIMES:
             raise ValueError("unknown runtime kind")
+        if manifest["package_kind"] not in {"deb", "portable", "desktop-entry", "test"}:
+            raise ValueError("unknown package kind")
+        if "sandbox" in manifest and not isinstance(manifest["sandbox"], bool):
+            raise ValueError("sandbox must be a boolean")
+        if "icon" in manifest and (not isinstance(manifest["icon"], str) or Path(manifest["icon"]).is_absolute() or ".." in Path(manifest["icon"]).parts or "\\" in manifest["icon"] or ":" in manifest["icon"]):
+            raise ValueError("icon must be a relative payload path")
         if not isinstance(manifest["requested_permissions"], list):
             raise ValueError("requested_permissions must be a list")
         if not isinstance(manifest["launch"], dict) or not isinstance(manifest["launch"].get("command"), list) or not manifest["launch"]["command"] or not all(isinstance(item, str) and item and "\x00" not in item for item in manifest["launch"]["command"]):

@@ -9,7 +9,7 @@ a runnable GUI using asynchronous Tk polling around the portal client.
 
 An `.rxpkg` is a ZIP with `manifest.json` at its root and actual payload files.
 Start from `packages/native-test-app/manifest.json`, choose a unique reverse-DNS
-ID, name and version, set `package_kind` to `native`, and set launch to:
+ID, name and version, set `package_kind` to `portable`, and set launch to:
 
 ```json
 {"command": ["python3", "{package}/main.py"]}
