@@ -76,7 +76,7 @@ def build(args):
         try:
             ssh = wait_ssh(key, args.port, process)
             run("scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), str(source), "root@127.0.0.1:/tmp/ruxeonrx-source.tar.gz")
-            provision = "python3 /opt/RuxeonRX/tools/rx-package.py && python3 /opt/RuxeonRX/tools/rx-stamp.py " + revision if args.code_only else "bash /opt/RuxeonRX/build/provision.sh " + revision + " " + lock["snapshot"]
+            provision = ("RX_SKIP_APT=1 " if args.code_only else "") + "bash /opt/RuxeonRX/build/provision.sh " + revision + " " + lock["snapshot"]
             run(*ssh, "mkdir -p /opt/RuxeonRX && tar -xzf /tmp/ruxeonrx-source.tar.gz -C /opt/RuxeonRX && " + provision)
             run(*ssh, "sync; shutdown -h now")
             process.wait(timeout=90)

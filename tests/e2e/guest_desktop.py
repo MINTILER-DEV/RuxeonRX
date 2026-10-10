@@ -127,7 +127,7 @@ def main(phase):
         client.call("set", key="appearance.text_scale", value=1.25)
         client.call("snapshot", name="acceptance-good")
         client.call("bundle", path="/home/rx/support-acceptance.zip")
-    subprocess.run(["scrot", "/home/rx/desktop-acceptance.png"], check=True)
+    subprocess.run(["scrot", "--overwrite", "/home/rx/desktop-acceptance.png"], check=True)
     print(json.dumps({"phase": phase, "passed": True, "real_graphics": True}), flush=True)
 
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(); parser.add_argument("--phase", choices=("initial", "resume", "safe"), required=True)
     try: main(parser.parse_args().phase)
     except Exception:
-        subprocess.run(["scrot", "/home/rx/desktop-acceptance.png"])
+        subprocess.run(["scrot", "--overwrite", "/home/rx/desktop-acceptance.png"])
         logs = Path.home() / ".local/state/ruxeonrx"
         for path in sorted(logs.rglob("*.log")):
             if "snapshots" not in path.parts:
