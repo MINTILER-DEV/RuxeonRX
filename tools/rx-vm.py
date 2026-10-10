@@ -51,8 +51,10 @@ def main():
                 ssh = image.wait_ssh(key, args.port, vm)
                 uid = subprocess.check_output(ssh + ["id -u rx"], text=True).strip()
                 guest = f"runuser -u rx -- env DISPLAY=:0 XAUTHORITY=/home/rx/.Xauthority XDG_RUNTIME_DIR=/run/user/{uid} RX_RUNTIME=/run/user/{uid}/ruxeonrx python3 /opt/RuxeonRX/tests/e2e/guest_desktop.py --phase {phase}"
-                subprocess.run(ssh + [guest], check=True)
+                acceptance = subprocess.run(ssh + [guest])
                 subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), "root@127.0.0.1:/home/rx/desktop-acceptance.png", str(out / (phase + "-desktop.png"))], check=True)
+                if acceptance.returncode:
+                    raise RuntimeError("graphical acceptance failed; screenshot and serial log preserved")
                 subprocess.run(ssh + ["sync; shutdown -h now"], check=True)
                 vm.wait(timeout=90)
             finally:

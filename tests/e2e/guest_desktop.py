@@ -82,4 +82,11 @@ def main(phase):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(); parser.add_argument("--phase", choices=("initial", "resume"), required=True)
-    main(parser.parse_args().phase)
+    try: main(parser.parse_args().phase)
+    except Exception:
+        subprocess.run(["scrot", "/home/rx/desktop-acceptance.png"])
+        logs = Path.home() / ".local/state/ruxeonrx"
+        for path in sorted(logs.rglob("*.log")):
+            if "snapshots" not in path.parts:
+                print(str(path) + "\n" + path.read_text(errors="replace")[-4000:], file=sys.stderr)
+        raise

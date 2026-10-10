@@ -10,7 +10,7 @@ Success: `{"ok":true,"result":[]}`. Failure:
 `{"ok":false,"error":"human-readable reason"}`.
 
 Controller methods: apps, install, update, repair, rollback, inspect, import,
-remove, launch, decide, pending, answer, settings, set, notifications, devices,
+remove, launch, pin, reset-data, decide, pending, answer, settings, set, notifications, devices,
 defaults, default, open-with, sources, source, catalog, source-install, updates, snapshot,
 snapshots, restore, bundle, health. The app endpoint supports only request and
 result; tokens are bound to installed apps and revoked when the process exits.

@@ -72,6 +72,7 @@ class PackageManager(LegacyPackageManager):
         previous = {key: value for key, value in current.items() if key != "history"}
         record["history"] = current.get("history", []) + [previous]
         record["launch_count"] = current.get("launch_count", 0)
+        record["pinned"] = current.get("pinned", False)
         self.registry.replace(record)
         return record
 
@@ -100,6 +101,7 @@ class PackageManager(LegacyPackageManager):
         self.verify(previous)
         previous["history"] = entries
         previous["launch_count"] = current.get("launch_count", 0)
+        previous["pinned"] = current.get("pinned", False)
         self.registry.replace(previous)
         return previous
 
@@ -117,7 +119,7 @@ class PackageManager(LegacyPackageManager):
         if root.exists(): shutil.rmtree(root)
         restored = self._prepare(blob)
         self.verify(restored)
-        restored.update({key: current[key] for key in ("history", "launch_count") if key in current})
+        restored.update({key: current[key] for key in ("history", "launch_count", "pinned") if key in current})
         self.registry.replace(restored)
         return restored
 

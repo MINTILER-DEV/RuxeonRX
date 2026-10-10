@@ -72,6 +72,23 @@ class DesktopService:
         if method == "repair": return m.repair(p["app_id"])
         if method == "rollback": return m.rollback(p["app_id"])
         if method == "inspect": return m.inspect(p["app_id"])
+        if method == "pin":
+            app = m.registry.get(p["app_id"])
+            if app is None: raise ValueError("app is not installed")
+            app["pinned"] = bool(p["pinned"])
+            m.registry.replace(app)
+            return app
+        if method == "reset-data":
+            app_id = p["app_id"]
+            if m.registry.get(app_id) is None: raise ValueError("app is not installed")
+            process = self.processes.get(app_id)
+            if process and process.poll() is None: process.terminate(); process.wait(timeout=5)
+            import shutil
+            data = self.state / "data" / app_id
+            if data.exists(): shutil.rmtree(data)
+            data.mkdir(parents=True)
+            m._log(app_id, "managed app data reset")
+            return True
         if method == "import": return m.import_desktop(Path(p["path"]))
         if method == "remove":
             process = self.processes.get(p["app_id"])

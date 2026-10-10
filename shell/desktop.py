@@ -100,7 +100,7 @@ class Desktop:
         self.tree.bind("<Double-1>", lambda event: self.launch())
         controls = ttk.Frame(self.app_frame)
         controls.pack(fill="x", pady=8)
-        for index, (label, command) in enumerate((("Launch", self.launch), ("Update…", self.update), ("Sample update", self.update_sample), ("Repair", lambda: self.operation("repair")), ("Roll back", lambda: self.operation("rollback")), ("Remove", self.remove), ("Import .desktop…", self.import_desktop), ("View logs", self.view_logs))):
+        for index, (label, command) in enumerate((("Launch", self.launch), ("Update…", self.update), ("Sample update", self.update_sample), ("Repair", lambda: self.operation("repair")), ("Roll back", lambda: self.operation("rollback")), ("Remove", self.remove), ("Import .desktop…", self.import_desktop), ("View logs", self.view_logs), ("Pin / unpin", self.pin), ("Reset app data", self.reset_data))):
             ttk.Button(controls, text=label, command=command).grid(row=index // 4, column=index % 4, padx=3, pady=3, sticky="ew")
         for index in range(4): controls.columnconfigure(index, weight=1)
         self.details = tk.Text(self.app_frame, height=6, wrap="word", state="disabled", font=("DejaVu Sans", 10))
@@ -114,8 +114,8 @@ class Desktop:
         old = self.selection
         self.apps = self.client.call("apps", query=self.query.get())
         for item in self.tree.get_children(): self.tree.delete(item)
-        for app in self.apps:
-            self.tree.insert("", "end", iid=app["id"], values=(app["name"], app["version"], app["source"]))
+        for app in sorted(self.apps, key=lambda item: (not item.get("pinned", False), item["name"].casefold())):
+            self.tree.insert("", "end", iid=app["id"], values=(("★ " if app.get("pinned") else "") + app["name"], app["version"], app["source"]))
         if self.apps:
             self.selection = old if old in [app["id"] for app in self.apps] else self.apps[0]["id"]
             self.tree.selection_set(self.selection)
@@ -156,6 +156,15 @@ class Desktop:
 
     def operation(self, method):
         if self.selection: self.call(method, app_id=self.selection); self.refresh()
+
+    def pin(self):
+        if self.selection:
+            app = self.client.call("inspect", app_id=self.selection)["app"]
+            self.call("pin", app_id=self.selection, pinned=not app.get("pinned", False)); self.refresh()
+
+    def reset_data(self):
+        if self.selection and messagebox.askyesno("Reset app data", "Erase this app's managed documents/settings and stop it?", parent=self.root):
+            self.call("reset-data", app_id=self.selection); self.refresh()
 
     def view_logs(self):
         if not self.selection: return
