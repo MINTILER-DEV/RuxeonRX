@@ -64,6 +64,7 @@ class Desktop:
         self.root.bind("<Control-i>", lambda event: self.install_sample())
         self.root.bind("<Control-l>", lambda event: self.launch())
         self.root.bind("<Control-u>", lambda event: self.update_sample())
+        self.root.bind("<Control-d>", lambda event: self.view_logs())
         self.root.bind("<Control-r>", lambda event: self.remove())
         self.root.bind("<F5>", lambda event: self.refresh())
         self.query.trace_add("write", lambda *args: self.refresh())

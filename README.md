@@ -22,6 +22,7 @@ request permission through the desktop. Settings, permissions, logs, software
 sources, default handlers, recovery and support export are available in the UI.
 Right-click the desktop background to reopen the shell, open a terminal, or
 restart/shut down. Alt+Tab switches between windows, including minimized apps.
+Ctrl+F searches, Ctrl+L launches the selection, and Ctrl+D opens its logs.
 
 ## Build and test on Linux
 

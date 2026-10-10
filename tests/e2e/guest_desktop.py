@@ -62,6 +62,7 @@ def main(phase):
         apps = client.call("apps")
         app = next(item for item in apps if item["id"] == app_id)
         assert app["version"] == "0.2.0", "version did not persist across reboot"
+        assert app.get("pinned"), "launcher pin did not persist across reboot"
         assert client.call("inspect", app_id=app_id)["permissions"]["notifications"] is True
         assert client.call("settings")["appearance.text_scale"] == 1.25
         client.call("launch", app_id=app_id)
@@ -84,6 +85,11 @@ def main(phase):
         xdo("windowactivate", "--sync", shell)
         xdo("key", "--clearmodifiers", "ctrl+i")
         wait(lambda: client.call("apps", query="RX Notes"), "install from actual shell keyboard shortcut")
+        xdo("key", "--clearmodifiers", "ctrl+f"); xdo("type", "--delay", "40", "no-such-app")
+        xdo("key", "--clearmodifiers", "ctrl+l")
+        time.sleep(1)
+        assert client.call("inspect", app_id=app_id)["app"]["launch_count"] == 0, "empty launcher search still launched an app"
+        xdo("key", "--clearmodifiers", "ctrl+f", "ctrl+a"); xdo("type", "--delay", "40", "RX Notes")
         xdo("key", "--clearmodifiers", "ctrl+l")
         notes = wait(lambda: window("RX Notes"), "real native Notes process and window")
         # Trigger notification by clicking the real application control.
@@ -109,6 +115,9 @@ def main(phase):
         chooser = wait(lambda: window("Open"), "associated-file portal picker")
         xdo("windowactivate", "--sync", chooser); xdo("key", "Return")
         wait(lambda: not client.call("pending"), "file-open intent handled by the running native app")
+        xdo("windowactivate", "--sync", shell); xdo("key", "--clearmodifiers", "ctrl+d")
+        log_window = wait(lambda: window("Application diagnostics"), "actual graphical app log viewer")
+        xdo("windowactivate", "--sync", log_window); xdo("key", "alt+F4")
         # The same portal contract also works for a regular, unsandboxed native app.
         regular_id = "org.ruxeonrx.regular-notes"
         client.call("install", path=str(ROOT / "packages/catalog/rx-notes-native-0.1.0.rxpkg"))
@@ -124,6 +133,7 @@ def main(phase):
         assert client.call("inspect", app_id=app_id)["app"]["version"] == "0.1.0"
         client.call("update", path=str(ROOT / "packages/catalog/rx-notes-0.2.0.rxpkg"))
         client.call("repair", app_id=app_id)
+        client.call("pin", app_id=app_id, pinned=True)
         client.call("set", key="appearance.text_scale", value=1.25)
         client.call("snapshot", name="acceptance-good")
         client.call("bundle", path="/home/rx/support-acceptance.zip")
