@@ -12,8 +12,12 @@ def sync_desktop(manager):
         if stale.name not in expected: stale.unlink()
     root = Path(__file__).resolve().parents[1]
     for app in records:
+        icon = root / "shell/assets/notes.svg"
+        if app.get("icon") and app.get("package", {}).get("root"):
+            candidate = Path(app["package"]["root"]) / app["icon"]
+            if candidate.is_file(): icon = candidate
         handlers = ["x-scheme-handler/" + item[:-1] if item.endswith(":") else item for item in app.get("handlers", [])]
-        content = "\n".join(("[Desktop Entry]", "Type=Application", "Name=" + app["name"].replace("\n", " "), f'Exec=python3 {root}/tools/rxctl launch {app["id"]} %u', "Icon=" + str(root / "shell/assets/notes.svg"), "Terminal=false", "MimeType=" + ";".join(handlers) + ";", ""))
+        content = "\n".join(("[Desktop Entry]", "Type=Application", "Name=" + app["name"].replace("\n", " "), f'Exec=python3 {root}/tools/rxctl launch {app["id"]} %u', "Icon=" + str(icon), "Terminal=false", "MimeType=" + ";".join(handlers) + ";", ""))
         (applications / ("ruxeonrx-" + app["id"] + ".desktop")).write_text(content)
     mimeapps = Path.home() / ".config/mimeapps.list"
     mimeapps.parent.mkdir(parents=True, exist_ok=True)

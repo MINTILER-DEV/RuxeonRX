@@ -188,6 +188,8 @@ class DesktopService:
         if method == "source-install":
             result = m.packages.from_source(p["name"], p["app_id"], update=p.get("update", False))
             m.associations.remove_app(result["id"])
+            for capability in list(m.portal.decisions(result["id"])):
+                if capability not in result["requested_permissions"]: m.portal.decide(result["id"], capability, False)
             for handler in result.get("handlers", []): m.associations.set_default(handler, result["id"])
             return result
         if method == "snapshot": return str(Recovery(self.state).create(p["name"]))

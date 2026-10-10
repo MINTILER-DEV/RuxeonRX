@@ -20,6 +20,7 @@ crashes = 0
 children = {}
 logs = []
 try:
+    subprocess.run(["xsetroot", "-solid", "#15243b"], check=False)
     with (log_dir / "openbox.log").open("ab") as log:
         wm = subprocess.Popen(["openbox"], stdout=log, stderr=subprocess.STDOUT)
     children["openbox"] = wm

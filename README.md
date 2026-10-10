@@ -20,6 +20,8 @@ Use the graphical Applications tab to install RX Notes, search, launch, update,
 repair, roll back and remove it. Its Open file and Send notification controls
 request permission through the desktop. Settings, permissions, logs, software
 sources, default handlers, recovery and support export are available in the UI.
+Right-click the desktop background to reopen the shell, open a terminal, or
+restart/shut down. Alt+Tab switches between windows, including minimized apps.
 
 ## Build and test on Linux
 

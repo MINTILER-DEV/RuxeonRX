@@ -13,6 +13,9 @@ if [[ "${RX_SKIP_APT:-0}" != 1 ]]; then
 fi
 id rx >/dev/null 2>&1 || useradd -m -s /bin/bash rx
 install -d -m 0700 -o rx -g rx /home/rx/.local /home/rx/.local/state /home/rx/.local/share /home/rx/.local/share/applications /home/rx/.local/state/ruxeonrx /home/rx/.config /home/rx/.config/openbox
+if [[ ! -f /home/rx/.config/openbox/menu.xml ]]; then
+    install -m 0600 -o rx -g rx /opt/RuxeonRX/build/desktop-menu.xml /home/rx/.config/openbox/menu.xml
+fi
 install -d /usr/share/xsessions /etc/lightdm/lightdm.conf.d /etc/ruxeonrx
 cat > /usr/share/xsessions/ruxeonrx.desktop <<EOF
 [Desktop Entry]
