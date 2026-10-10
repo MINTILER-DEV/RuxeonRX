@@ -9,6 +9,7 @@ import secrets
 import selectors
 import socket
 import sys
+from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "shell")] + [str(path) for path in (ROOT / "services").iterdir() if path.is_dir()]
@@ -44,6 +45,18 @@ class DesktopService:
 
     def file_intent(self, app_id, filename):
         app = self.manager.registry.get(app_id)
+        if sum(item["app_id"] == app_id for item in self.requests.values()) >= 16:
+            raise ValueError("too many unconsumed open requests")
+        uri = urlparse(str(filename))
+        if uri.scheme and uri.scheme != "file":
+            if uri.scheme + ":" not in app.get("handlers", []):
+                raise ValueError("application does not declare this protocol")
+            identifier = secrets.token_hex(16)
+            self.requests[identifier] = {"id": identifier, "app_id": app_id, "pending": False, "origin": "open-with", "content": str(filename), "message": "Opened link"}
+            return identifier
+        if uri.scheme == "file":
+            if uri.netloc not in ("", "localhost"): raise ValueError("remote file URIs are unsupported")
+            filename = unquote(uri.path)
         path = Path(filename).expanduser().resolve()
         if "files" not in app["requested_permissions"]:
             raise PermissionError("application does not support the file portal")
@@ -72,9 +85,10 @@ class DesktopService:
             request = self.requests.get(params["request_id"])
             if not request or request["app_id"] != app_id:
                 raise PermissionError("unknown portal request")
+            if not request.get("pending"): self.requests.pop(params["request_id"])
             return request
         if method == "intents":
-            return [{"id": item["id"]} for item in self.requests.values() if item["app_id"] == app_id and item.get("pending") and item.get("origin") == "open-with"]
+            return [{"id": item["id"]} for item in self.requests.values() if item["app_id"] == app_id and item.get("origin") == "open-with"]
         raise PermissionError("portal endpoint only accepts request/result")
 
     def dispatch(self, method, p):

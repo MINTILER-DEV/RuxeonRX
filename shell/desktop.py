@@ -242,7 +242,7 @@ class Desktop:
         style.configure("Treeview", fieldbackground=colours["background"], background=colours["background"], foreground=colours["foreground"])
         style.configure("TButton", background=colours["background"], foreground=colours["foreground"])
         style.map("Treeview", foreground=[("selected", "#ffffff")], background=[("selected", "#355ed8")])
-        style.configure("Treeview", rowheight=max(36, int(size * 2.7)))
+        style.configure("Treeview", font=("DejaVu Sans", size), rowheight=max(36, int(size * 2.7)))
         style.map("TButton", background=[("focus", "#355ed8"), ("active", "#355ed8")], foreground=[("focus", "#ffffff"), ("active", "#ffffff")])
         if os.name == "posix":
             import subprocess

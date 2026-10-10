@@ -14,6 +14,23 @@ from rxipc import Client
 
 @unittest.skipIf(os.name == "nt", "AF_UNIX service acceptance runs on Linux")
 class DaemonTest(unittest.TestCase):
+    def test_file_and_protocol_intents_are_scoped_and_require_file_consent(self):
+        sys.path.insert(0, str(ROOT / "services/rx-appd"))
+        from daemon import DesktopService
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            service = DesktopService(root / "state", root / "run")
+            app = service.manager.install_manifest(ROOT / "packages/native-test-app/manifest.json")
+            document = root / "a document.txt"; document.write_text("private document")
+            identifier = service.file_intent(app["id"], document.as_uri())
+            self.assertTrue(service.requests[identifier]["pending"])
+            self.assertEqual(str(document), service.requests[identifier]["suggested_path"])
+            self.assertEqual([], service.manager.portal.file_grants(app["id"]))
+            link = service.file_intent(app["id"], "rxsample:hello")
+            self.assertEqual("rxsample:hello", service.requests[link]["content"])
+            with self.assertRaises(ValueError): service.file_intent(app["id"], "unknown:hello")
+            with self.assertRaises(ValueError): service.file_intent(app["id"], "file://remote/file.txt")
+
     def test_single_writer_and_restricted_portal(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
