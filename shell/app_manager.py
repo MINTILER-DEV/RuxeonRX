@@ -126,7 +126,7 @@ class AppManager:
         return {"app": app, "permissions": self.portal.decisions(app_id), "file_grants": self.portal.file_grants(app_id), "logs": self.logs(app_id), "storage_bytes": self.storage_bytes(app_id)}
 
     def storage_bytes(self, app_id: str) -> int:
-        roots = (self.log_root / app_id, self.state_dir / "data" / app_id)
+        roots = (self.log_root / app_id, self.state_dir / "data" / app_id, self.state_dir / "package-cache" / app_id)
         return sum(path.stat().st_size for root in roots if root.exists() for path in root.rglob("*") if path.is_file())
 
     def grant_file(self, app_id: str, path: Path) -> str:
@@ -149,6 +149,8 @@ class AppManager:
         return path.read_text(encoding="utf-8").splitlines() if path.exists() else []
 
     def remove(self, app_id: str, *, purge_data: bool = False) -> bool:
+        app = self.registry.get(app_id)
+        if app is None: return False
         if not self.registry.uninstall(app_id):
             return False
         self.portal.revoke_all(app_id)
@@ -161,6 +163,9 @@ class AppManager:
                     directory.unlink()
                 elif directory.exists():
                     shutil.rmtree(directory)
+            for record in [app] + app.get("history", []):
+                blob = Path(record.get("package", {}).get("blob", ""))
+                if blob.is_file() and blob.parent.resolve() == (self.state_dir / "package-cache").resolve(): blob.unlink()
         return True
 
     def _log(self, app_id: str, message: str) -> None:

@@ -1,0 +1,21 @@
+name: Desktop acceptance
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  desktop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-utils xorriso openssh-client
+      - run: python3 -m unittest discover -s tests/unit -v && python3 -m unittest discover -s tests/integration -v
+      - run: ./tools/rx-build build
+      - run: ./tools/rx-build test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-evidence
+          path: |
+            out/desktop/*.log
+            out/desktop/*.png
+            out/desktop/artifact.json
+            out/desktop/acceptance.json

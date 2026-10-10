@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "sdk/bindings/python"))
+from rxipc import Client
 sys.path[:0] = [str(ROOT / "shell")] + [str(path) for path in (ROOT / "services").iterdir() if path.is_dir()]
 from app_manager import AppManager
 from launcher import search
@@ -57,6 +60,39 @@ def main() -> int:
     actions.add_parser("snapshots")
     support = actions.add_parser("support-bundle"); support.add_argument("target", type=Path)
     args = parser.parse_args()
+    runtime = Path(os.environ.get("RX_RUNTIME", str(Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp/rx-" + str(getattr(os, "getuid", lambda: 0)()))) / "ruxeonrx")))
+    if (runtime / "appd.sock").exists():
+        client = Client(runtime / "appd.sock")
+        calls = {
+            "apps": ("apps", {"query": getattr(args, "query", "")}),
+            "install": ("install", {"path": str(getattr(args, "manifest", ""))}),
+            "update": ("update", {"path": str(getattr(args, "manifest", ""))}),
+            "launch": ("launch", {"app_id": getattr(args, "app_id", "")}),
+            "inspect": ("inspect", {"app_id": getattr(args, "app_id", "")}),
+            "repair": ("repair", {"app_id": getattr(args, "app_id", "")}),
+            "rollback": ("rollback", {"app_id": getattr(args, "app_id", "")}),
+            "remove": ("remove", {"app_id": getattr(args, "app_id", ""), "purge_data": getattr(args, "purge_data", False)}),
+            "defaults": ("defaults", {}), "sources": ("sources", {}),
+            "notifications": ("notifications", {}), "devices": ("devices", {}),
+            "settings": ("settings", {}), "session-health": ("health", {}),
+            "snapshots": ("snapshots", {}),
+            "snapshot": ("snapshot", {"name": getattr(args, "name", "")}),
+            "restore": ("restore", {"name": getattr(args, "name", "")}),
+            "support-bundle": ("bundle", {"path": str(getattr(args, "target", ""))}),
+            "set": ("set", {"key": getattr(args, "key", ""), "value": json.loads(args.value) if args.action == "set" else None}),
+            "decide": ("decide", {"app_id": getattr(args, "app_id", ""), "capability": getattr(args, "capability", ""), "allowed": getattr(args, "choice", "") == "allow"}),
+            "add-source": ("source", {"name": getattr(args, "name", ""), "url": getattr(args, "url", "")}),
+            "set-default": ("default", {"app_id": getattr(args, "app_id", ""), "handler": getattr(args, "handler", "")}),
+        }
+        try:
+            if args.action == "permissions":
+                output({app["id"]: client.call("inspect", app_id=app["id"])["permissions"] for app in client.call("apps")})
+            elif args.action in calls:
+                method, params = calls[args.action]
+                output(client.call(method, **params))
+            else: parser.error("this offline command is unavailable in a running desktop session")
+        except RuntimeError as error: parser.error(str(error))
+        return 0
     manager = AppManager(args.state)
     try:
         if args.action == "install": output(manager.install_manifest(args.manifest))

@@ -8,7 +8,7 @@ deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/$snapshot 
 EOF
 rm -f /etc/apt/sources.list.d/debian.sources
 apt-get update
-apt-get install -y --no-install-recommends linux-image-amd64 xserver-xorg xserver-xorg-video-all lightdm openbox python3 python3-tk python3-jsonschema bubblewrap dbus-x11 xterm fonts-dejavu-core xdotool scrot x11-utils x11-xserver-utils e2fsprogs sudo
+apt-get install -y --no-install-recommends linux-image-amd64 xserver-xorg xserver-xorg-video-all lightdm openbox python3 python3-tk python3-jsonschema bubblewrap dbus-x11 xterm fonts-dejavu-core xdotool scrot x11-utils x11-xserver-utils xinput e2fsprogs sudo
 id rx >/dev/null 2>&1 || useradd -m -s /bin/bash rx
 install -d -m 0700 -o rx -g rx /home/rx/.local/state/ruxeonrx /home/rx/.config/openbox
 install -d /usr/share/xsessions /etc/lightdm/lightdm.conf.d /etc/ruxeonrx
@@ -38,6 +38,9 @@ VERSION_ID=0.5
 EOF
 systemctl set-default graphical.target
 systemctl enable lightdm
+install -d /etc/systemd/system/lightdm.service.d
+printf '[Service]\nExecStartPre=/usr/bin/python3 /opt/RuxeonRX/tools/rx-boot.py\n' > /etc/systemd/system/lightdm.service.d/ruxeonrx.conf
+dpkg-query -W -f='${Package}=${Version}\n' > /etc/ruxeonrx/packages.lock
 apt-get clean
 rm -f /tmp/ruxeonrx-source.tar.gz
 echo RX_PROVISION=ok

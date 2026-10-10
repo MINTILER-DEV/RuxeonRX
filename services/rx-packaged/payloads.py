@@ -38,6 +38,9 @@ class PackageManager(LegacyPackageManager):
             if not destination.exists():
                 shutil.copytree(staging, destination)
             manifest["package"] = {"path": str(destination / "manifest.json"), "sha256": hashes["manifest.json"], "root": str(destination), "hashes": hashes}
+            blob = self.cache / (self.digest(source) + ".blob")
+            if not blob.exists(): shutil.copyfile(source, blob)
+            manifest["package"].update(blob=str(blob), blob_sha256=self.digest(source))
             return manifest
 
     def install(self, source):
@@ -64,10 +67,14 @@ class PackageManager(LegacyPackageManager):
     def verify(self, record):
         package = record.get("package", {})
         root = Path(package.get("root", ""))
+        if self.cache.resolve() not in root.resolve().parents:
+            raise ValueError("package path is outside managed cache")
         if not package.get("hashes"):
             raise ValueError("app has no verified package payload")
         for relative, expected in package["hashes"].items():
             path = root / relative
+            if root.resolve() not in path.resolve().parents:
+                raise ValueError("package path escapes cache")
             if not path.is_file() or path.is_symlink() or self.digest(path) != expected:
                 raise ValueError("package is missing or modified: " + relative)
 
@@ -89,9 +96,17 @@ class PackageManager(LegacyPackageManager):
         current = self.registry.get(app_id)
         if current is None:
             raise KeyError(app_id)
-        self.verify(current)
-        restored = json.loads(Path(current["package"]["path"]).read_text(encoding="utf-8"))
-        restored.update({key: current[key] for key in ("package", "history", "launch_count") if key in current})
+        package = current.get("package", {})
+        blob = Path(package.get("blob", ""))
+        if not blob.is_file() or self.digest(blob) != package.get("blob_sha256"):
+            raise ValueError("repair archive is missing or modified; re-download from a trusted source")
+        root = Path(package["root"]).resolve()
+        if self.cache.resolve() not in root.parents:
+            raise ValueError("invalid repair target")
+        if root.exists(): shutil.rmtree(root)
+        restored = self._prepare(blob)
+        self.verify(restored)
+        restored.update({key: current[key] for key in ("history", "launch_count") if key in current})
         self.registry.replace(restored)
         return restored
 
@@ -111,7 +126,7 @@ class PackageManager(LegacyPackageManager):
         return catalog["packages"]
 
     def from_source(self, name, app_id, *, update=False):
-        entry = next((item for item in self.catalog(name) if item.get("id") == app_id), None)
+        entry = next((item for item in reversed(self.catalog(name)) if item.get("id") == app_id), None)
         if entry is None:
             raise ValueError("app not in source")
         if urlparse(entry["url"]).scheme not in ("https", "file"):

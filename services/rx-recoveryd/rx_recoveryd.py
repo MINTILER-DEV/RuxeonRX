@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import shutil
+import tempfile
 import zipfile
 
 
@@ -18,27 +19,45 @@ class Recovery:
         target = self.snapshot_dir / f"{name}.zip"
         with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for path in sorted(self.state_dir.rglob("*")):
-                if path.is_file() and self.snapshot_dir not in path.parents:
+                if path.is_file() and not path.is_symlink() and self.snapshot_dir not in path.parents:
                     archive.write(path, path.relative_to(self.state_dir))
         return target
 
     def restore(self, name: str) -> int:
+        if not name.replace("-", "").replace("_", "").isalnum():
+            raise ValueError("invalid snapshot name")
         source = self.snapshot_dir / f"{name}.zip"
         if not source.is_file():
             raise ValueError("snapshot does not exist")
         restored = 0
         with zipfile.ZipFile(source) as archive:
+            validated = []
             for member in archive.infolist():
                 relative = Path(member.filename)
-                if relative.is_absolute() or ".." in relative.parts:
+                if relative.is_absolute() or ".." in relative.parts or "\\" in member.filename or ":" in member.filename or relative.parts[0] == "snapshots":
                     raise ValueError("unsafe snapshot member")
                 target = (self.state_dir / relative).resolve()
                 if self.state_dir not in target.parents:
                     raise ValueError("unsafe snapshot target")
-                target.parent.mkdir(parents=True, exist_ok=True)
-                with archive.open(member) as reader, target.open("wb") as writer:
-                    shutil.copyfileobj(reader, writer)
-                restored += 1
+                validated.append((member, relative))
+            if sum(member.file_size for member, _ in validated) > 512 * 1024 * 1024:
+                raise ValueError("snapshot exceeds 512 MiB limit")
+            with tempfile.TemporaryDirectory(dir=self.snapshot_dir) as temporary:
+                staging = Path(temporary) / "restore"
+                staging.mkdir()
+                for member, relative in validated:
+                    target = staging / relative
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    with archive.open(member) as reader, target.open("wb") as writer:
+                        shutil.copyfileobj(reader, writer)
+                    restored += 1
+                self.create("before-restore")
+                for existing in list(self.state_dir.iterdir()):
+                    if existing == self.snapshot_dir: continue
+                    if existing.is_dir() and not existing.is_symlink(): shutil.rmtree(existing)
+                    else: existing.unlink()
+                for item in staging.iterdir():
+                    shutil.move(str(item), str(self.state_dir / item.name))
         return restored
 
     def list(self) -> list[str]:

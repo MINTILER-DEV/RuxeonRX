@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Single-writer desktop service plus a token-scoped application portal socket."""
 import argparse
+import fcntl
 import json
 import os
 from pathlib import Path
@@ -17,6 +18,7 @@ from rx_settingsd import Settings
 from rx_deviced import DeviceInventory
 from rx_diagnosticsd import Diagnostics
 from rx_recoveryd import Recovery
+from integration import sync_desktop
 
 
 class DesktopService:
@@ -117,11 +119,19 @@ class DesktopService:
         if method == "notifications": return self.notifications.list()
         if method == "devices": return DeviceInventory().collect()
         if method == "defaults": return m.associations.defaults()
+        if method == "open-with":
+            app_id = m.associations.defaults().get(p["handler"])
+            if not app_id: raise ValueError("no default application for handler")
+            return self.dispatch("launch", {"app_id": app_id})
         if method == "default": return m.set_default_handler(p["app_id"], p["handler"])
         if method == "sources": return m.packages.sources()
         if method == "source": return m.packages.add_source(p["name"], p["url"])
         if method == "catalog": return m.packages.catalog(p["name"])
-        if method == "source-install": return m.packages.from_source(p["name"], p["app_id"], update=p.get("update", False))
+        if method == "source-install":
+            result = m.packages.from_source(p["name"], p["app_id"], update=p.get("update", False))
+            m.associations.remove_app(result["id"])
+            for handler in result.get("handlers", []): m.associations.set_default(handler, result["id"])
+            return result
         if method == "snapshot": return str(Recovery(self.state).create(p["name"]))
         if method == "snapshots": return Recovery(self.state).list()
         if method == "restore":
@@ -139,6 +149,9 @@ def serve(state, runtime):
     runtime.mkdir(parents=True, exist_ok=True, mode=0o700)
     (runtime / "portal").mkdir(exist_ok=True, mode=0o700)
     service = DesktopService(state, runtime)
+    lock = (runtime / "writer.lock").open("a")
+    try: fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError: raise RuntimeError("rx-appd already running for this session")
     selector = selectors.DefaultSelector()
     listeners = []
     for path, kind in ((runtime / "appd.sock", "admin"), (runtime / "portal/portal.sock", "portal")):
@@ -159,6 +172,8 @@ def serve(state, runtime):
                             request = json.loads(stream.readline(1024 * 1024))
                         if request.get("version") != 1: raise ValueError("unsupported IPC version")
                         result = service.portal(request["method"], request.get("params", {})) if key.data == "portal" else service.dispatch(request["method"], request.get("params", {}))
+                        if key.data == "admin" and request["method"] in ("install", "update", "repair", "rollback", "remove", "import", "restore", "source-install", "default"):
+                            sync_desktop(service.manager)
                         answer = {"ok": True, "result": result}
                     except Exception as error:
                         answer = {"ok": False, "error": str(error)}
@@ -168,6 +183,7 @@ def serve(state, runtime):
         for process in service.processes.values():
             if process.poll() is None: process.terminate()
         for listener in listeners: listener.close()
+        lock.close()
 
 
 if __name__ == "__main__":

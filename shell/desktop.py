@@ -15,11 +15,12 @@ from rxipc import Client
 class Desktop:
     def __init__(self):
         self.client = Client(Path(os.environ["RX_RUNTIME"]) / "appd.sock")
+        self.safe_mode = self.client.call("health")["mode"] == "safe"
         self.root = tk.Tk()
         self.root.title("RuxeonRX Desktop")
         self.root.geometry("1024x720+0+0")
         self.root.minsize(800, 560)
-        self.status = tk.StringVar(value="Welcome to RuxeonRX 0.5 Alpha")
+        self.status = tk.StringVar(value="Safe mode: defaults loaded; use recovery tools" if self.safe_mode else "Welcome to RuxeonRX 0.5 Alpha")
         self.query = tk.StringVar()
         self.selection = None
         self.prompting = set()
@@ -176,6 +177,9 @@ class Desktop:
 
     def build_settings(self):
         settings = self.client.call("settings")
+        if self.safe_mode:
+            settings["appearance.high_contrast"] = False
+            settings["appearance.text_scale"] = 1.0
         for key, label in (("appearance.high_contrast", "High contrast"), ("input.touchpad_natural_scroll", "Natural touchpad scrolling"), ("privacy.telemetry", "Optional telemetry preference (no collection service)")):
             value = tk.BooleanVar(value=settings[key])
             ttk.Checkbutton(self.settings_frame, text=label, variable=value, command=lambda k=key, v=value: self.setting(k, v.get())).pack(anchor="w", pady=10)
@@ -186,6 +190,8 @@ class Desktop:
         ttk.Label(self.settings_frame, text="Sources are explicitly trusted by you. Packages are checksum verified.").pack(anchor="w", pady=10)
         ttk.Button(self.settings_frame, text="Add software source…", command=self.add_source).pack(anchor="w")
         ttk.Button(self.settings_frame, text="View sources", command=lambda: messagebox.showinfo("Sources", json.dumps(self.client.call("sources"), indent=2))).pack(anchor="w", pady=10)
+        ttk.Button(self.settings_frame, text="Install from source…", command=self.source_install).pack(anchor="w")
+        ttk.Button(self.settings_frame, text="Default handlers…", command=self.default_handlers).pack(anchor="w", pady=10)
         self.apply_style(settings)
 
     def setting(self, key, value):
@@ -199,6 +205,13 @@ class Desktop:
         style.configure(".", font=("DejaVu Sans", size), **colours)
         style.configure("Treeview", rowheight=max(36, int(size * 2.7)))
         style.map("TButton", background=[("focus", "#b4c7f7")])
+        if os.name == "posix":
+            import subprocess
+            try:
+                devices = subprocess.check_output(["xinput", "list", "--id-only"], text=True).split()
+                for identifier in devices:
+                    subprocess.run(["xinput", "set-prop", identifier, "libinput Natural Scrolling Enabled", "1" if settings["input.touchpad_natural_scroll"] else "0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except (FileNotFoundError, subprocess.CalledProcessError): pass
 
     def add_source(self):
         name = simpledialog.askstring("Source", "Source name:", parent=self.root)
@@ -206,8 +219,22 @@ class Desktop:
             url = simpledialog.askstring("Source", "HTTPS or file catalog URL:", parent=self.root)
             if url: self.call("source", name=name, url=url)
 
+    def source_install(self):
+        name = simpledialog.askstring("Install", "Source name:", parent=self.root)
+        if name:
+            catalog = self.call("catalog", name=name)
+            if catalog is None: return
+            app_id = simpledialog.askstring("Install", "Choose app ID:\n" + "\n".join(item["id"] + " " + item.get("version", "") for item in catalog), parent=self.root)
+            if app_id: self.call("source-install", name=name, app_id=app_id); self.refresh()
+
+    def default_handlers(self):
+        app_id = simpledialog.askstring("Default application", "Application ID:", parent=self.root)
+        if app_id:
+            handler = simpledialog.askstring("Default application", "MIME type or protocol (for example text/plain):", parent=self.root)
+            if handler: self.call("default", app_id=app_id, handler=handler)
+
     def build_support(self):
-        for label, command in (("Device diagnostics", self.devices), ("Export support bundle…", self.bundle), ("Create recovery snapshot…", self.snapshot), ("Restore snapshot…", self.restore), ("Start safe mode next login", self.safe)):
+        for label, command in (("Device diagnostics", self.devices), ("Export support bundle…", self.bundle), ("Create recovery snapshot…", self.snapshot), ("Restore snapshot…", self.restore), ("Start safe mode next login", self.safe), ("Exit safe mode next login", self.exit_safe)):
             ttk.Button(self.support_frame, text=label, command=command).pack(anchor="w", pady=8)
         ttk.Label(self.support_frame, text="Logs appear in app details. Support bundles omit app documents and file grants.").pack(anchor="w", pady=12)
 
@@ -231,6 +258,11 @@ class Desktop:
     def safe(self):
         (Path(os.environ["RX_STATE"]) / "safe-mode").touch()
         self.status.set("Safe mode selected for the next login. Close the VM and restart.")
+
+    def exit_safe(self):
+        marker = Path(os.environ["RX_STATE"]) / "safe-mode"
+        marker.unlink(missing_ok=True)
+        self.status.set("Normal mode selected for the next login.")
 
     def power(self):
         if messagebox.askyesno("Power", "Shut down RuxeonRX?", parent=self.root):

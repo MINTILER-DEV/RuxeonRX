@@ -36,11 +36,12 @@ class Diagnostics:
                 if source.is_file():
                     archive.writestr(f"state/{name}", self.scrub(source.read_text(encoding="utf-8")))
                     metadata["included"].append(f"state/{name}")
-            log_root = self.state_dir / "diagnostics"
-            if log_root.exists():
-                for source in sorted(log_root.rglob("*.log")):
+            for log_root in (self.state_dir / "diagnostics", self.state_dir / "session-logs"):
+                for source in sorted(log_root.rglob("*.log")) if log_root.exists() else []:
                     relative = source.relative_to(self.state_dir)
                     archive.writestr(str(relative).replace("\\", "/"), self.scrub(source.read_text(encoding="utf-8")))
                     metadata["included"].append(str(relative).replace("\\", "/"))
             archive.writestr("bundle.json", json.dumps(metadata, indent=2, sort_keys=True) + "\n")
+            build = Path("/etc/ruxeonrx/build.json")
+            if build.is_file(): archive.writestr("build.json", build.read_text())
         return target
