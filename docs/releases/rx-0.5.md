@@ -10,9 +10,10 @@ checksum-verified source downloads, immutable version caches, repair archives,
 atomic update/rollback registry history, exact state snapshots and support
 export. Build inputs are locked and package versions recorded.
 
-Acceptance runs in a disposable overlay and boots twice. It requires visible
-shell/app windows, keyboard/mouse interaction, denied/allowed notification
-prompts, app updates and persistence across reboot. Unit/integration tests
+Acceptance runs in a disposable overlay and boots three times. It requires visible
+shell/app windows, keyboard/mouse interaction, denied/allowed file/notification
+prompts, actual file selection, app updates, persistence across reboot,
+supervised service crash recovery and a safe-mode boot. Unit/integration tests
 exercise actual payload output, tamper recovery and package/portal/snapshot
 security boundaries. Evidence lives in out/desktop.
 

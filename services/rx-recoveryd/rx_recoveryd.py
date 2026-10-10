@@ -6,6 +6,7 @@ import shutil
 import tempfile
 import zipfile
 
+LIVE_STATE = {"session.json", "session-logs"}
 
 class Recovery:
     def __init__(self, state_dir: Path) -> None:
@@ -19,7 +20,7 @@ class Recovery:
         target = self.snapshot_dir / f"{name}.zip"
         with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
             for path in sorted(self.state_dir.rglob("*")):
-                if path.is_file() and not path.is_symlink() and self.snapshot_dir not in path.parents:
+                if path.is_file() and not path.is_symlink() and self.snapshot_dir not in path.parents and path.relative_to(self.state_dir).parts[0] not in LIVE_STATE:
                     archive.write(path, path.relative_to(self.state_dir))
         return target
 
@@ -34,7 +35,7 @@ class Recovery:
             validated = []
             for member in archive.infolist():
                 relative = Path(member.filename)
-                if relative.is_absolute() or ".." in relative.parts or "\\" in member.filename or ":" in member.filename or relative.parts[0] == "snapshots":
+                if not relative.parts or relative.is_absolute() or ".." in relative.parts or "\\" in member.filename or ":" in member.filename or relative.parts[0] in {"snapshots", *LIVE_STATE}:
                     raise ValueError("unsafe snapshot member")
                 target = (self.state_dir / relative).resolve()
                 if self.state_dir not in target.parents:
@@ -53,7 +54,7 @@ class Recovery:
                     restored += 1
                 self.create("before-restore")
                 for existing in list(self.state_dir.iterdir()):
-                    if existing == self.snapshot_dir: continue
+                    if existing == self.snapshot_dir or existing.name in LIVE_STATE: continue
                     if existing.is_dir() and not existing.is_symlink(): shutil.rmtree(existing)
                     else: existing.unlink()
                 for item in staging.iterdir():

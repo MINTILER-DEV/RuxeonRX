@@ -31,3 +31,17 @@ class RecoveryBoundaries(unittest.TestCase):
             recovery.restore("good")
             self.assertEqual("before", (state / "apps.json").read_text())
             self.assertFalse((state / "after.json").exists())
+
+    def test_restore_preserves_live_process_metadata_and_log_handles(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary); recovery = Recovery(state)
+            session = state / "session.json"; session.write_text("old pid")
+            logs = state / "session-logs"; logs.mkdir()
+            log = logs / "shell.log"; log.write_text("before\n")
+            recovery.create("good")
+            session.write_text("current pid")
+            with log.open("a") as handle:
+                recovery.restore("good")
+                handle.write("after\n"); handle.flush()
+                self.assertEqual("before\nafter\n", log.read_text())
+            self.assertEqual("current pid", session.read_text())
