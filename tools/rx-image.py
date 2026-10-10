@@ -32,16 +32,17 @@ def wait_ssh(key, port, process, limit=600):
 
 
 def build(args):
-    for tool in ("qemu-img", "qemu-system-x86_64", "ssh", "scp", "ssh-keygen", "xorriso"):
+    required = ("qemu-img", "qemu-system-x86_64", "ssh", "scp", "ssh-keygen") + (() if args.code_only else ("xorriso",))
+    for tool in required:
         if not shutil.which(tool):
             raise RuntimeError("missing tool: " + tool)
     OUT.mkdir(parents=True, exist_ok=True)
     lock = json.loads((ROOT / "build/base.lock.json").read_text())
     base = OUT / lock["image"]
-    if not base.exists():
+    if not args.code_only and not base.exists():
         print("Downloading pinned Debian base", flush=True)
         urllib.request.urlretrieve(lock["url"], base)
-    if hashlib.file_digest(base.open("rb"), "sha512").hexdigest() != lock["sha512"]:
+    if not args.code_only and hashlib.file_digest(base.open("rb"), "sha512").hexdigest() != lock["sha512"]:
         raise RuntimeError("base checksum mismatch")
     disk = OUT / "ruxeonrx-0.5.qcow2"
     if args.code_only and (not args.refresh or not disk.exists()):
@@ -52,6 +53,8 @@ def build(args):
         run("qemu-img", "convert", "-O", "qcow2", str(base), str(disk))
         run("qemu-img", "resize", str(disk), "12G")
     key = OUT / "builder-key"
+    if args.refresh and not key.exists():
+        raise ValueError("refresh requires this development image's original builder-key")
     if not key.exists():
         run("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(key))
     pub = key.with_suffix(".pub").read_text().strip()
@@ -60,7 +63,11 @@ def build(args):
     (seed_dir / "user-data").write_text("#cloud-config\ndisable_root: false\nssh_pwauth: false\nusers:\n  - name: root\n    ssh_authorized_keys:\n      - " + pub + "\n")
     (seed_dir / "meta-data").write_text("instance-id: ruxeonrx-builder\nlocal-hostname: ruxeonrx\n")
     seed = OUT / "seed.iso"
-    run("xorriso", "-as", "mkisofs", "-quiet", "-V", "cidata", "-o", str(seed), str(seed_dir))
+    if not args.code_only:
+        run("xorriso", "-as", "mkisofs", "-quiet", "-V", "cidata", "-o", str(seed), str(seed_dir))
+    else:
+        previous = json.loads((OUT / "artifact.json").read_text())
+        if previous["base"] != lock: raise ValueError("base lock changed; perform a full Linux rebuild")
     source = OUT / "source.tar.gz"
     with tarfile.open(source, "w:gz") as archive:
         for directory in ("build", "images", "packages", "services", "shell", "sdk", "tests", "tools", "docs"):
@@ -69,8 +76,9 @@ def build(args):
                     archive.add(path, arcname=str(path.relative_to(ROOT)))
     revision = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
     qemu = ["qemu-system-x86_64", "-m", "2048", "-smp", "2", "-accel", args.accel,
-            "-drive", f"file={disk},format=qcow2,if=virtio", "-cdrom", str(seed),
+            "-drive", f"file={disk},format=qcow2,if=virtio",
             "-nic", f"user,hostfwd=tcp:127.0.0.1:{args.port}-:22", "-display", "none", "-serial", "stdio", "-monitor", "none"]
+    if not args.code_only: qemu += ["-cdrom", str(seed)]
     with (OUT / "builder.log").open("w") as log:
         process = subprocess.Popen(qemu, stdout=log, stderr=subprocess.STDOUT)
         try:

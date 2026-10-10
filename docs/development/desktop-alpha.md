@@ -39,6 +39,9 @@ preserving user state. Run it only when the VM is stopped. Acceptance creates
 its own overlay; archive `out/desktop/acceptance.qcow2` before rerunning.
 After a successful full build, `build --refresh --code-only` redeploys project
 code without rerunning APT. Changes to OS dependencies require a full refresh.
+Code-only refresh also runs on Windows with Python/QEMU/OpenSSH, the original
+artifact manifest and that image's private development builder key. Keep the
+key local; ordinary testers only need the disk and Windows launcher.
 
 ## Windows
 
