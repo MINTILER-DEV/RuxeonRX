@@ -7,11 +7,11 @@ from rxipc import Client
 
 root = tk.Tk()
 root.title(os.environ.get("RX_APP_NAME", "RX Notes"))
-root.geometry("600x400")
+root.geometry("600x400+80+120")
 client = Client(Path(os.environ["RX_PORTAL_DIR"]) / "portal.sock")
 token = os.environ["RX_TOKEN"]
 status = tk.StringVar(value="Choose a file using the RuxeonRX portal.")
-text = tk.Text(root, wrap="word", font=("DejaVu Sans", 12))
+text = tk.Text(root, height=8, wrap="word", font=("DejaVu Sans", 12))
 
 
 def request(capability):
