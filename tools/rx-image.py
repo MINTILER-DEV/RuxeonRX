@@ -44,6 +44,8 @@ def build(args):
     if hashlib.file_digest(base.open("rb"), "sha512").hexdigest() != lock["sha512"]:
         raise RuntimeError("base checksum mismatch")
     disk = OUT / "ruxeonrx-0.5.qcow2"
+    if args.code_only and (not args.refresh or not disk.exists()):
+        raise ValueError("--code-only requires --refresh and an already-provisioned disk")
     if disk.exists() and not args.refresh:
         raise RuntimeError("disk exists; archive it before rebuilding (persistent user state is never overwritten)")
     if not disk.exists():
@@ -74,7 +76,8 @@ def build(args):
         try:
             ssh = wait_ssh(key, args.port, process)
             run("scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), str(source), "root@127.0.0.1:/tmp/ruxeonrx-source.tar.gz")
-            run(*ssh, "mkdir -p /opt/RuxeonRX && tar -xzf /tmp/ruxeonrx-source.tar.gz -C /opt/RuxeonRX && bash /opt/RuxeonRX/build/provision.sh " + revision + " " + lock["snapshot"])
+            provision = "python3 /opt/RuxeonRX/tools/rx-package.py && python3 /opt/RuxeonRX/tools/rx-stamp.py " + revision if args.code_only else "bash /opt/RuxeonRX/build/provision.sh " + revision + " " + lock["snapshot"]
+            run(*ssh, "mkdir -p /opt/RuxeonRX && tar -xzf /tmp/ruxeonrx-source.tar.gz -C /opt/RuxeonRX && " + provision)
             run(*ssh, "sync; shutdown -h now")
             process.wait(timeout=90)
         finally:
@@ -92,5 +95,6 @@ if __name__ == "__main__":
     parser.add_argument("--accel", choices=("tcg", "kvm"), default="tcg")
     parser.add_argument("--port", type=int, default=2225)
     parser.add_argument("--refresh", action="store_true", help="update project files in the existing development image, preserving guest user data")
+    parser.add_argument("--code-only", action="store_true", help="with --refresh, redeploy sources without changing the already-installed OS packages")
     args = parser.parse_args()
     build(args)
