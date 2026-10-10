@@ -21,10 +21,20 @@ PY
     exec python3 "$root/tools/rx-vm.py" --safe "$@"
     ;;
   bundle)
-    exec python3 "$root/tools/rxctl" support-bundle "$root/out/support.zip"
+    exec python3 "$root/tools/rx-support.py"
     ;;
   clean)
-    echo 'Archive out/desktop explicitly: it contains persistent user data. Clean never deletes VM disks.'
+    python3 - "$root" <<'PY'
+from pathlib import Path
+import sys
+out = Path(sys.argv[1]).resolve() / 'out/desktop'
+for name in ('source.tar.gz', 'seed.iso'):
+    target = out / name
+    if target.is_file() and not target.is_symlink():
+        target.unlink()
+        print('Removed regenerable staging file:', target)
+print('VM disks, SSH keys, cached base and diagnostic evidence preserved.')
+PY
     ;;
   *) echo "usage: $0 {bootstrap|build|run|test|doctor|bundle|clean} [options]" >&2; exit 64 ;;
 esac

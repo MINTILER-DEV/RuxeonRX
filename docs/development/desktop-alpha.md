@@ -18,6 +18,12 @@ sudo apt-get install qemu-system-x86 qemu-utils xorriso openssh-client python3
 ./tools/rx-build run --vnc
 ```
 
+`./tools/rx-build bundle` exports host build/test logs, screenshots and metadata
+to `out/support.zip`, excluding disks and SSH keys. Guest support bundles are
+exported separately from Diagnostics. Review screenshots/logs before sharing.
+`clean` removes only regenerable source/seed staging files; it preserves disks,
+keys and evidence. Run clean only while the builder/VM is stopped.
+
 Building needs no host root: project provisioning runs as root inside the
 isolated builder guest. The first download is approximately 416 MiB; allow
 12 GiB of virtual disk capacity and at least 2 GiB of guest RAM. TCG is the
