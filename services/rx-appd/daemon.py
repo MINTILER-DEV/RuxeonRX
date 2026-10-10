@@ -42,6 +42,7 @@ class DesktopService:
             process = self.processes.get(app_id)
             if process is None or process.poll() is not None:
                 self.tokens.pop(token, None)
+                self.requests = {key: item for key, item in self.requests.items() if item["app_id"] != app_id}
 
     def file_intent(self, app_id, filename):
         app = self.manager.registry.get(app_id)
@@ -143,7 +144,9 @@ class DesktopService:
         if method == "decide":
             m.decide(p["app_id"], p["capability"], p["allowed"])
             return True
-        if method == "pending": return [item for item in self.requests.values() if item.get("pending")]
+        if method == "pending":
+            self.reap()
+            return [item for item in self.requests.values() if item.get("pending")]
         if method == "answer":
             request = self.requests[p["id"]]
             app_id, capability = request["app_id"], request["capability"]
