@@ -44,7 +44,9 @@ def main():
     if overlay.exists(): parser.error("acceptance overlay exists; archive it before rerunning")
     subprocess.run(["qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", str(disk), str(overlay)], check=True)
     key = out / "builder-key"
-    for phase in ("initial", "resume"):
+    requested_safe = args.safe
+    for phase in ("initial", "resume", "safe"):
+        args.safe = requested_safe or phase == "safe"
         with (out / (phase + "-qemu.log")).open("w") as log:
             vm = subprocess.Popen(command(args, overlay, out / (phase + "-serial.log")), stdout=log, stderr=subprocess.STDOUT)
             try:
@@ -59,7 +61,7 @@ def main():
                 vm.wait(timeout=90)
             finally:
                 if vm.poll() is None: vm.terminate(); vm.wait(timeout=15)
-    (out / "acceptance.json").write_text(json.dumps({"passed": True, "phases": ["graphical lifecycle", "reboot persistence"], "disk": str(disk)}, indent=2))
+    (out / "acceptance.json").write_text(json.dumps({"passed": True, "phases": ["graphical lifecycle and portals", "reboot persistence and crash recovery", "safe boot and snapshot restore"], "disk": str(disk)}, indent=2))
     print("RX 0.5 graphical desktop and reboot acceptance passed")
 
 

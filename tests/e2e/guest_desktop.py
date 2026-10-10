@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -51,7 +52,13 @@ def main(phase):
     wait(lambda: (runtime / "graphical-ready").exists() and window("RuxeonRX Desktop"), "real Tk shell window")
     assert client.call("health")["healthy"]
     app_id = "org.ruxeonrx.native-test-app"
-    if phase == "resume":
+    if phase == "safe":
+        assert client.call("health")["mode"] == "safe"
+        assert (Path.home() / ".local/state/ruxeonrx/safe-mode").is_file()
+        client.call("restore", name="acceptance-good")
+        assert client.call("health")["healthy"]
+        assert client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0"
+    elif phase == "resume":
         apps = client.call("apps")
         app = next(item for item in apps if item["id"] == app_id)
         assert app["version"] == "0.2.0", "version did not persist across reboot"
@@ -62,6 +69,16 @@ def main(phase):
         client.call("remove", app_id=app_id, purge_data=True)
         assert not client.call("apps", query="RX Notes")
         assert app_id not in client.call("defaults").values()
+        client.call("restore", name="acceptance-good")
+        assert client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0"
+        session = Path.home() / ".local/state/ruxeonrx/session.json"
+        old_pid = json.loads(session.read_text())["pids"]["rx-appd"]
+        os.kill(old_pid, signal.SIGTERM)
+        wait(lambda: client.call("health")["pid"] != old_pid and client.call("health")["healthy"], "real daemon crash recovery")
+        shell = window("RuxeonRX Desktop")
+        old_pid = json.loads(session.read_text())["pids"]["rx-shell"]
+        os.kill(old_pid, signal.SIGTERM)
+        wait(lambda: window("RuxeonRX Desktop") not in (None, shell) and client.call("health")["healthy"], "real graphical shell crash recovery")
     else:
         shell = window("RuxeonRX Desktop")
         xdo("windowactivate", "--sync", shell)
@@ -87,6 +104,11 @@ def main(phase):
         xdo("windowactivate", "--sync", chooser)
         xdo("key", "alt+n"); xdo("type", "--clearmodifiers", str(document)); xdo("key", "Return")
         wait(lambda: str(document) in client.call("inspect", app_id=app_id)["file_grants"], "specific file grant through picker")
+        client.call("open-with", handler="text/plain", path=str(document))
+        permission(True)
+        chooser = wait(lambda: window("Open"), "associated-file portal picker")
+        xdo("windowactivate", "--sync", chooser); xdo("key", "Return")
+        wait(lambda: not client.call("pending"), "file-open intent handled by the running native app")
         # The same portal contract also works for a regular, unsandboxed native app.
         regular_id = "org.ruxeonrx.regular-notes"
         client.call("install", path=str(ROOT / "packages/catalog/rx-notes-native-0.1.0.rxpkg"))
@@ -110,7 +132,7 @@ def main(phase):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(); parser.add_argument("--phase", choices=("initial", "resume"), required=True)
+    parser = argparse.ArgumentParser(); parser.add_argument("--phase", choices=("initial", "resume", "safe"), required=True)
     try: main(parser.parse_args().phase)
     except Exception:
         subprocess.run(["scrot", "/home/rx/desktop-acceptance.png"])
