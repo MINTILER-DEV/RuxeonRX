@@ -21,6 +21,8 @@ class Desktop:
         self.root.geometry("1024x720+0+0")
         self.root.minsize(800, 560)
         self.status = tk.StringVar(value="Safe mode: defaults loaded; use recovery tools" if self.safe_mode else "Welcome to RuxeonRX 0.5 Alpha")
+        # Reserve status space before expandable content so it remains visible.
+        ttk.Label(self.root, textvariable=self.status, padding=10).pack(side="bottom", fill="x")
         self.query = tk.StringVar()
         self.selection = None
         self.prompting = set()
@@ -58,7 +60,6 @@ class Desktop:
         self.build_permissions()
         self.build_settings()
         self.build_support()
-        ttk.Label(self.root, textvariable=self.status, padding=10).pack(fill="x")
         self.root.bind("<Control-f>", lambda event: self.focus_search())
         self.root.bind("<Control-i>", lambda event: self.install_sample())
         self.root.bind("<Control-l>", lambda event: self.launch())
@@ -89,7 +90,7 @@ class Desktop:
         ttk.Label(toolbar, text="Search apps (Ctrl+F)").pack(side="left")
         ttk.Button(toolbar, text="Install package…", command=self.install).pack(side="right")
         ttk.Button(toolbar, text="Install RX Notes", command=self.install_sample).pack(side="right", padx=4)
-        self.tree = ttk.Treeview(self.app_frame, columns=("name", "version", "source"), show="headings", selectmode="browse", height=7)
+        self.tree = ttk.Treeview(self.app_frame, columns=("name", "version", "source"), show="headings", selectmode="browse", height=3)
         for key, title in (("name", "Application"), ("version", "Version"), ("source", "Source")):
             self.tree.heading(key, text=title)
         self.tree.column("name", width=360)
