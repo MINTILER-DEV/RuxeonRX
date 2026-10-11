@@ -103,9 +103,9 @@ class DesktopService:
 
     def dispatch(self, method, p):
         m = self.manager
-        if method == "apps":
-            if self.mode == "normal": reconcile_favorites(m)
-            return m.registry.list(p.get("query", ""))
+        if self.mode == "normal" and method in ("apps", "install", "update", "repair", "rollback", "remove", "import", "pin", "source-install", "default", "snapshot"):
+            reconcile_favorites(m)
+        if method == "apps": return m.registry.list(p.get("query", ""))
         if method == "install": return m.install_manifest(Path(p["path"]))
         if method == "update": return m.update(Path(p["path"]))
         if method == "repair": return m.repair(p["app_id"])
@@ -211,7 +211,9 @@ class DesktopService:
                 if capability not in result["requested_permissions"]: m.portal.decide(result["id"], capability, False)
             for handler in result.get("handlers", []): m.associations.set_default(handler, result["id"])
             return result
-        if method == "snapshot": return str(Recovery(self.state).create(p["name"]))
+        if method == "snapshot":
+            if self.mode == "normal": reconcile_settings(self.settings)
+            return str(Recovery(self.state).create(p["name"]))
         if method == "snapshots": return Recovery(self.state).list()
         if method == "restore":
             for process in self.processes.values():
