@@ -90,7 +90,10 @@ def main():
                 if phase == "initial":
                     subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), "root@127.0.0.1:/home/rx/desktop-default.png", str(out / "default-desktop.png")], check=True)
                 subprocess.run(ssh + ["sync; shutdown -h now"], check=True)
-                vm.wait(timeout=90)
+                # GDM/logind can drain a 90-second session stop job, and TCG
+                # emulation adds scheduling overhead. Still require actual
+                # poweroff; never terminate a successful phase to simulate it.
+                vm.wait(timeout=240)
             except Exception as error:
                 report.update(failed_phase=phase, error=str(error))
                 report_path.write_text(json.dumps(report, indent=2))
