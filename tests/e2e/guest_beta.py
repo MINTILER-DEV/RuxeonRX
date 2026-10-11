@@ -35,8 +35,10 @@ def descendants(node, depth=0):
 def control(atspi, name, app=None, prefix=False):
     if app is None:
         app = "org.ruxeonrx.native-test-app" if name in ("Send notification", "Open file…", "Save locally") or name.startswith("Opened ") else "modern.py"
-    for application in atspi.Registry.getDesktop(0):
-        if app and app != "*" and application.name != app: continue
+    for application in reversed(list(atspi.Registry.getDesktop(0))):
+        try:
+            if app and app != "*" and application.name != app: continue
+        except Exception: continue
         roots = [child for child in application if child and child.name == "Open"] if app == "*" else [application]
         for node in (node for root in roots for node in descendants(root)):
             try:
@@ -111,6 +113,8 @@ def main(phase):
     app_id = "org.ruxeonrx.native-test-app"
     if phase == "safe":
         import pyatspi as atspi
+        from gi.repository import Atspi
+        Atspi.set_timeout(1500, 3000)
         assert client.call("health")["mode"] == "safe"
         click(atspi, "Snapshot name"); xdo("key", "ctrl+a"); xdo("type", "acceptance-good")
         click(atspi, "Restore"); click(atspi, "Continue")
@@ -123,6 +127,8 @@ def main(phase):
             return any(line.strip() in ("State: ACTIVE", "State: ENABLED") for line in extension.splitlines())
         wait(extension_active, "active GNOME taskbar extension", timeout=420)
         import pyatspi as atspi
+        from gi.repository import Atspi
+        Atspi.set_timeout(1500, 3000)
         assert "BOTTOM" in subprocess.check_output(["gsettings", "get", "org.gnome.shell.extensions.dash-to-panel", "panel-position"], text=True)
         assert subprocess.run(["pgrep", "-x", "gnome-shell"], stdout=subprocess.DEVNULL).returncode == 0
         if phase == "initial":
