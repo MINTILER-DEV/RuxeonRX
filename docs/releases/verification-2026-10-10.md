@@ -22,9 +22,8 @@ Subsequent documentation-only commits do not change the tested runtime.
   3 Linux-only integration tests skipped; Python compilation passed.
 - Windows QEMU 11.1.1: final three-boot acceptance passed, using TCG,
   2 virtual CPUs, 2 GiB RAM, BIOS, standard VGA and VirtIO storage.
-- Linux QEMU 8.2.2: three-boot acceptance passed at `9607f39` with the final
-  sandbox/registry fixes; the `109d96e` rebuild, which adds readable
-  high-contrast tab labels, is undergoing final acceptance.
+- Linux QEMU 8.2.2: final three-boot acceptance passed at the same runtime
+  revision and with the same VM configuration as Windows.
 
 Graphical acceptance operates actual windows with keyboard/mouse input. It
 tests sandbox read-only code/broker directories, writable private app data,
@@ -51,9 +50,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-windows.ps1
 ```
 
 No Linux server is needed to run this local disk. Screenshots, serial logs,
-`artifact.json` and `acceptance.json` are in `out/desktop/`; the reviewed host
+`artifact.json` and `acceptance.json` are in `out/desktop/`; the host
 evidence export is `out/support.zip`. Disks, private builder keys and generated
 evidence are intentionally not committed.
+
+The Linux host's independently provisioned disk has SHA-256
+`6f04f9f405d3fe157c028c60f2114439ac3ed6b6a2eedb3de3ab5fff8cc1db5a`.
+Disk hashes differ because each guest has its own filesystem and SSH identity;
+the locked base, package snapshot and runtime source revision match.
+Both disks passed `qemu-img check`. A copy of the Linux evidence export is
+retained locally at `out/linux-support-109d96e.zip`. Review logs/screenshots
+before sharing either support bundle.
 
 ## Remaining release gates and boundaries
 

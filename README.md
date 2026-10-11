@@ -36,6 +36,8 @@ Ctrl+F searches, Ctrl+L launches the selection, and Ctrl+D opens its logs.
 Read [the complete build/run guide](docs/development/desktop-alpha.md),
 [the support matrix](docs/development/test-matrix.md), and
 [the security model](docs/security/threat-model.md).
+The [2026-10-10 verification record](docs/releases/verification-2026-10-10.md)
+lists executed checks, the local Windows disk checksum and remaining release gates.
 
 Desktop acceptance requires real windows and permission interaction, then
 reboots the guest and verifies persistence. Logs and screenshots stay in
