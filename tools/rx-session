@@ -14,6 +14,8 @@ runtime = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp/rx-" + str(os.getuid())))
 runtime.mkdir(parents=True, exist_ok=True, mode=0o700)
 (runtime / "graphical-ready").unlink(missing_ok=True)
 os.environ.update(RX_STATE=str(state), RX_RUNTIME=str(runtime))
+os.environ.setdefault("GSK_RENDERER", "cairo")
+(runtime / "environment.json").write_text(json.dumps({key: os.environ[key] for key in ("DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "RX_RUNTIME", "RX_STATE", "GSK_RENDERER") if key in os.environ}))
 log_dir = state / "session-logs"
 log_dir.mkdir(exist_ok=True)
 crashes = 0

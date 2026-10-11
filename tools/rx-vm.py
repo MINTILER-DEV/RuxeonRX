@@ -57,7 +57,7 @@ def main():
                 ssh = image.wait_ssh(key, args.port, vm)
                 report["guest_build"] = json.loads(subprocess.check_output(ssh + ["cat /etc/ruxeonrx/build.json"], text=True))
                 uid = subprocess.check_output(ssh + ["id -u rx"], text=True).strip()
-                guest = f"runuser -u rx -- env DISPLAY=:0 XAUTHORITY=/home/rx/.Xauthority XDG_RUNTIME_DIR=/run/user/{uid} RX_RUNTIME=/run/user/{uid}/ruxeonrx python3 /opt/RuxeonRX/tests/e2e/guest_desktop.py --phase {phase}"
+                guest = f"runuser -u rx -- env DISPLAY=:0 XAUTHORITY=/home/rx/.Xauthority XDG_RUNTIME_DIR=/run/user/{uid} RX_RUNTIME=/run/user/{uid}/ruxeonrx python3 /opt/RuxeonRX/tests/e2e/guest_beta.py --phase {phase}"
                 acceptance = subprocess.run(ssh + [guest])
                 subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), "root@127.0.0.1:/home/rx/desktop-acceptance.png", str(out / (phase + "-desktop.png"))], check=True)
                 if acceptance.returncode:
@@ -74,7 +74,7 @@ def main():
         report_path.write_text(json.dumps(report, indent=2))
     report["passed"] = True
     report_path.write_text(json.dumps(report, indent=2))
-    print("RX 0.5 graphical desktop and reboot acceptance passed")
+    print("RX 1.0 GNOME/taskbar/native desktop and recovery acceptance passed")
 
 
 if __name__ == "__main__": main()

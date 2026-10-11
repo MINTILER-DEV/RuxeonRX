@@ -14,6 +14,8 @@ runtime = Path(os.environ["XDG_RUNTIME_DIR"]) / "ruxeonrx"
 state.mkdir(parents=True, exist_ok=True, mode=0o700)
 runtime.mkdir(parents=True, exist_ok=True, mode=0o700)
 os.environ.update(RX_STATE=str(state), RX_RUNTIME=str(runtime), RX_DESKTOP="GNOME")
+os.environ.setdefault("GSK_RENDERER", "cairo")
+(runtime / "environment.json").write_text(json.dumps({key: os.environ[key] for key in ("DISPLAY", "XAUTHORITY", "DBUS_SESSION_BUS_ADDRESS", "XDG_RUNTIME_DIR", "RX_RUNTIME", "RX_STATE", "RX_DESKTOP", "GSK_RENDERER") if key in os.environ}))
 (runtime / "graphical-ready").unlink(missing_ok=True)
 logs = state / "session-logs"; logs.mkdir(exist_ok=True)
 commands = {
