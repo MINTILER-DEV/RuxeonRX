@@ -239,7 +239,7 @@ class Desktop(Adw.Application):
         self.settings_group = self.group(parent, "Appearance and accessibility", "Preferences persist across login. System settings provide display, sound, network, keyboard, privacy and printer controls.")
         self.call("settings", self.render_settings) if not self.safe_mode else self.render_settings({"appearance.high_contrast": False, "appearance.text_scale": 1.0, "input.touchpad_natural_scroll": True})
         integrations = self.group(parent, "System controls")
-        for name, panel in (("Display", "display"), ("Sound", "sound"), ("Network", "network"), ("Bluetooth", "bluetooth"), ("Keyboard", "keyboard"), ("Mouse and touchpad", "mouse"), ("Printers", "printers"), ("Privacy", "privacy"), ("User accounts", "user-accounts")):
+        for name, panel in (("Display", "display"), ("Sound", "sound"), ("Network", "network"), ("Bluetooth", "bluetooth"), ("Keyboard", "keyboard"), ("Mouse and touchpad", "mouse"), ("Printers", "printers"), ("Privacy", "privacy"), ("User accounts", ("system", "users"))):
             self.row(integrations, name, button=self.button("Open", lambda p=panel: self.system_settings(p)))
 
     def render_settings(self, settings):
@@ -257,7 +257,7 @@ class Desktop(Adw.Application):
         self.row(self.settings_group, "Color scheme", button=scheme)
 
     def system_settings(self, panel=None):
-        try: subprocess.Popen(["gnome-control-center"] + ([panel] if panel else []))
+        try: subprocess.Popen(["gnome-control-center"] + ([panel] if isinstance(panel, str) else list(panel or [])))
         except OSError as error: self.error(str(error))
 
     def build_recovery(self):
