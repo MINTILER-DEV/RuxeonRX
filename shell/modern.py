@@ -160,7 +160,7 @@ class Desktop(Adw.Application):
         for row in list(getattr(self, "permission_rows", [])): self.permission_group.remove(row)
         self.permission_rows = []
         for capability in app["requested_permissions"]:
-            supported = capability in ("files", "notifications", "network", "background") and not app.get("unrestricted")
+            supported = capability in ("files", "notifications", "network") and not app.get("unrestricted")
             switch = Gtk.Switch(active=details["permissions"].get(capability, False), valign=Gtk.Align.CENTER, sensitive=supported)
             switch.connect("notify::active", lambda widget, parameter, c=capability, identifier=app["id"]: self.call("decide", app_id=identifier, capability=c, allowed=widget.get_active()))
             explanation = "Unrestricted app: this control cannot constrain native access" if app.get("unrestricted") else "Not mediated by RX 1.0" if not supported else "Per-request consent" if capability == "files" else "Launch-time namespace policy" if capability == "network" else "Desktop policy"
@@ -290,6 +290,14 @@ class Desktop(Adw.Application):
                     for request in pending:
                         if request["id"] not in self.prompting: self.permission(request)
                     self.notification_view.set_label("\n\n".join(item["title"] + "\n" + item["body"] for item in notifications) or "No notifications yet.")
+                    for item in notifications:
+                        identity = json.dumps(item, sort_keys=True)
+                        if identity not in self.notifications_seen:
+                            self.notifications_seen.add(identity)
+                            notification = Gio.Notification.new(item["title"])
+                            notification.set_body(item["body"])
+                            notification.set_icon(Gio.ThemedIcon.new("dialog-information-symbolic"))
+                            self.send_notification(None, notification)
                 except Exception as error: self.error(str(error))
                 return False
             GLib.idle_add(deliver)

@@ -20,6 +20,7 @@ from rx_deviced import DeviceInventory
 from rx_diagnosticsd import Diagnostics
 from rx_recoveryd import Recovery
 from integration import sync_desktop
+from system_integration import apply_settings, import_core_apps, sync_favorites
 
 
 class DesktopService:
@@ -36,6 +37,10 @@ class DesktopService:
         self.requests = {}
         self.processes = {}
         self.mode = "safe" if (state / "safe-mode").exists() else "normal"
+        if self.mode == "normal":
+            import_core_apps(self.manager)
+            sync_desktop(self.manager)
+            apply_settings(self.settings.all())
 
     def reap(self):
         for token, app_id in list(self.tokens.items()):
@@ -105,6 +110,7 @@ class DesktopService:
             if app is None: raise ValueError("app is not installed")
             app["pinned"] = bool(p["pinned"])
             m.registry.replace(app)
+            sync_favorites(m.registry.list())
             return app
         if method == "reset-data":
             app_id = p["app_id"]
@@ -168,7 +174,10 @@ class DesktopService:
             self.requests[p["id"]] = answer
             return answer
         if method == "settings": return self.settings.all()
-        if method == "set": return self.settings.set(p["key"], p["value"])
+        if method == "set":
+            settings = self.settings.set(p["key"], p["value"])
+            apply_settings(settings)
+            return settings
         if method == "notifications": return self.notifications.list()
         if method == "devices": return DeviceInventory().collect()
         if method == "defaults": return m.associations.defaults()
@@ -202,6 +211,8 @@ class DesktopService:
                 if process.poll() is None: process.terminate(); process.wait(timeout=5)
             result = Recovery(self.state).restore(p["name"])
             self.tokens.clear(); self.requests.clear()
+            apply_settings(self.settings.all())
+            sync_favorites(m.registry.list())
             return result
         if method == "bundle": return str(Diagnostics(self.state, DeviceInventory().collect()).create(Path(p["path"])))
         if method == "health":

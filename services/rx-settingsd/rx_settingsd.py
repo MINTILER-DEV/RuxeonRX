@@ -7,6 +7,7 @@ from pathlib import Path
 DEFAULTS = {
     "appearance.high_contrast": False,
     "appearance.text_scale": 1.0,
+    "appearance.color_scheme": "prefer-dark",
     "input.touchpad_natural_scroll": True,
     "input.focus_follows_mouse": False,
     "privacy.telemetry": False,
@@ -35,6 +36,8 @@ class Settings:
             raise ValueError(f"{key} requires {expected.__name__}")
         if key == "updates.channel" and value not in ("stable", "testing"):
             raise ValueError("update channel must be stable or testing")
+        if key == "appearance.color_scheme" and value not in ("default", "prefer-light", "prefer-dark"):
+            raise ValueError("color scheme must be default, prefer-light or prefer-dark")
         settings = self.all()
         settings[key] = value
         temporary = self.path.with_suffix(".tmp")

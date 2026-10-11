@@ -93,6 +93,8 @@ StartupWMClass=org.ruxeonrx.Desktop
 Categories=System;
 EOF
 done
+cp /usr/share/applications/org.ruxeonrx.Apps.desktop /usr/share/applications/org.ruxeonrx.Desktop.desktop
+printf 'NoDisplay=true\n' >> /usr/share/applications/org.ruxeonrx.Desktop.desktop
 systemctl enable NetworkManager cups bluetooth
 dpkg-query -W -f='${Package}=${Version}\n' > /etc/ruxeonrx/packages.lock
 apt-get clean

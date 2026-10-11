@@ -1,6 +1,7 @@
 """Export normalized records into native desktop/MIME integration files."""
 import configparser
 from pathlib import Path
+from system_integration import sync_favorites
 
 
 def sync_desktop(manager):
@@ -13,11 +14,12 @@ def sync_desktop(manager):
     root = Path(__file__).resolve().parents[1]
     for app in records:
         icon = root / "shell/assets/notes.svg"
+        if app.get("desktop_icon"): icon = app["desktop_icon"]
         if app.get("icon") and app.get("package", {}).get("root"):
             candidate = Path(app["package"]["root"]) / app["icon"]
             if candidate.is_file(): icon = candidate
         handlers = ["x-scheme-handler/" + item[:-1] if item.endswith(":") else item for item in app.get("handlers", [])]
-        content = "\n".join(("[Desktop Entry]", "Type=Application", "Name=" + app["name"].replace("\n", " "), f'Exec=python3 {root}/tools/rxctl launch {app["id"]} %u', "Icon=" + str(icon), "Terminal=false", "MimeType=" + ";".join(handlers) + ";", ""))
+        content = "\n".join(("[Desktop Entry]", "Type=Application", "Name=" + app["name"].replace("\n", " "), f'Exec=python3 {root}/tools/rxctl launch {app["id"]} %u', "Icon=" + str(icon), "StartupWMClass=" + app.get("startup_wm_class", app["id"]), "Terminal=false", "MimeType=" + ";".join(handlers) + ";", ""))
         (applications / ("ruxeonrx-" + app["id"] + ".desktop")).write_text(content)
     mimeapps = Path.home() / ".config/mimeapps.list"
     mimeapps.parent.mkdir(parents=True, exist_ok=True)
@@ -32,3 +34,4 @@ def sync_desktop(manager):
         key = "x-scheme-handler/" + handler[:-1] if handler.endswith(":") else handler
         section[key] = "ruxeonrx-" + app_id + ".desktop;"
     with mimeapps.open("w") as handle: parser.write(handle)
+    sync_favorites(records)

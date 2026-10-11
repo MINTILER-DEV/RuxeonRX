@@ -102,6 +102,9 @@ class AppManager:
         command = [part for part in shlex.split(entry["Exec"]) if not part.startswith("%")]
         app_id = "org.ruxeonrx.import." + path.stem.lower().replace("_", "-")
         record = {"id": app_id, "name": entry.get("Name", path.stem), "version": "1", "source": "desktop-entry", "runtime_kind": "native-linux", "package_kind": "desktop-entry", "launch": {"command": command}, "requested_permissions": ["files", "notifications"], "data_dir": "data/" + app_id, "diagnostics_dir": "diagnostics/" + app_id, "handlers": [value for value in entry.get("MimeType", "").split(";") if value and not value.startswith("x-scheme-handler")], "unrestricted": True}
+        for key in ("Icon", "StartupWMClass"):
+            if any(character in entry.get(key, "") for character in ("\r", "\n", "\x00")): raise ValueError("invalid desktop integration metadata")
+        record.update(desktop_icon=entry.get("Icon", "application-x-executable"), startup_wm_class=entry.get("StartupWMClass", path.stem))
         self.registry.register(record)
         for handler in record["handlers"]:
             self.associations.set_default(handler, app_id)
