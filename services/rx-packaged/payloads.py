@@ -26,6 +26,11 @@ class PackageManager(LegacyPackageManager):
                         if relative.is_absolute() or ".." in relative.parts or "\\" in item.filename or ":" in item.filename or ((item.external_attr >> 16) & 0o170000) == 0o120000:
                             raise ValueError("unsafe package entry")
                     archive.extractall(staging)
+                    for item in archive.infolist():
+                        payload = staging / item.filename
+                        if payload.is_file() and (item.external_attr >> 16) & 0o111:
+                            # Preserve executability, never setuid/setgid archive bits.
+                            payload.chmod(0o700)
                 manifest = self._read(staging / "manifest.json", None)
             else:
                 manifest = json.loads(source.read_text(encoding="utf-8"))
@@ -52,6 +57,7 @@ class PackageManager(LegacyPackageManager):
             manifest["package"].update(blob=str(blob), blob_sha256=self.digest(source))
             manifest["data_dir"] = str(self.state_dir / "data" / manifest["id"])
             manifest["diagnostics_dir"] = str(self.state_dir / "diagnostics" / manifest["id"])
+            self.verify(manifest)
             return manifest
 
     def install(self, source):

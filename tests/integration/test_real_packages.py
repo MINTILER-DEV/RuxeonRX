@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
@@ -12,6 +13,23 @@ from app_manager import AppManager
 
 
 class RealPackageTest(unittest.TestCase):
+    @unittest.skipIf(os.name == "nt", "Unix executable payload runs on Linux")
+    def test_native_executable_mode_is_preserved_without_setuid_bits(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); manager = AppManager(root / "state")
+            manifest = json.loads((ROOT / "packages/native-test-app/manifest.json").read_text())
+            manifest["launch"] = {"command": ["{package}/native-app"]}
+            package = root / "native.rxpkg"
+            entry = zipfile.ZipInfo("native-app"); entry.external_attr = 0o104755 << 16
+            with zipfile.ZipFile(package, "w") as archive:
+                archive.writestr("manifest.json", json.dumps(manifest))
+                archive.writestr(entry, "#!/bin/sh\nprintf 'native executable permissions work\\n'\n")
+            app = manager.install_manifest(package)
+            executable = Path(app["package"]["root"]) / "native-app"
+            self.assertEqual(0, executable.stat().st_mode & 0o6000)
+            self.assertEqual(0, manager.execute(app["id"]).wait(timeout=10))
+            self.assertIn("native executable permissions work", manager.logs(app["id"]))
+
     def test_regular_desktop_entry_launches_with_captured_logs_and_handlers(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); manager = AppManager(root / "state")
