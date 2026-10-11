@@ -24,6 +24,11 @@ class Desktop(Adw.Application):
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self.window = None; self.selection = None; self.apps = []; self.prompting = set(); self.poll_busy = False
         self.pages = {}; self.settings_loaded = False; self.notifications_seen = set()
+        self.notification_cache = Path.home() / ".local/state/ruxeonrx/notifications-delivered.json"
+        try:
+            delivered = json.loads(self.notification_cache.read_text())
+            if isinstance(delivered, list): self.notifications_seen = {item for item in delivered[-100:] if isinstance(item, str)}
+        except (OSError, ValueError): pass
         self.safe_mode = (Path.home() / ".local/state/ruxeonrx/safe-mode").exists()
         self.connect("command-line", self.command_line)
 
@@ -297,14 +302,21 @@ class Desktop(Adw.Application):
                     for request in pending:
                         if request["id"] not in self.prompting: self.permission(request)
                     self.notification_view.set_label("\n\n".join(item["title"] + "\n" + item["body"] for item in notifications) or "No notifications yet.")
+                    current_ids = set()
                     for item in notifications:
-                        identity = json.dumps(item, sort_keys=True)
+                        identity = item.get("id", json.dumps(item, sort_keys=True))
+                        current_ids.add(identity)
                         if identity not in self.notifications_seen:
                             self.notifications_seen.add(identity)
                             notification = Gio.Notification.new(item["title"])
                             notification.set_body(item["body"])
                             notification.set_icon(Gio.ThemedIcon.new("dialog-information-symbolic"))
                             self.send_notification(None, notification)
+                    self.notifications_seen.intersection_update(current_ids)
+                    cached = json.dumps(sorted(self.notifications_seen))
+                    if not self.notification_cache.exists() or self.notification_cache.read_text() != cached:
+                        temporary = self.notification_cache.with_suffix(".tmp")
+                        temporary.write_text(cached); temporary.replace(self.notification_cache)
                 except Exception as error: self.error(str(error))
                 return False
             GLib.idle_add(deliver)
