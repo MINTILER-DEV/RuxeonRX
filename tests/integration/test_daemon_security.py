@@ -6,6 +6,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "sdk/bindings/python"))
@@ -14,6 +15,20 @@ from rxipc import Client
 
 @unittest.skipIf(os.name == "nt", "AF_UNIX service acceptance runs on Linux")
 class DaemonTest(unittest.TestCase):
+    def test_app_appearance_is_token_scoped_and_exposes_only_the_public_color_scheme(self):
+        sys.path.insert(0, str(ROOT / "services/rx-appd"))
+        from daemon import DesktopService
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); service = DesktopService(root / "state", root / "run")
+            app = service.manager.install_manifest(ROOT / "packages/native-test-app/manifest.json")
+            process = Mock(); process.poll.return_value = None
+            service.tokens["live-token"] = app["id"]; service.processes[app["id"]] = process
+            self.assertEqual({"color_scheme": "prefer-dark"}, service.portal("appearance", {"token": "live-token"}))
+            service.settings.set("appearance.color_scheme", "prefer-light")
+            self.assertEqual({"color_scheme": "prefer-light"}, service.portal("appearance", {"token": "live-token"}))
+            with self.assertRaises(PermissionError): service.portal("appearance", {"token": "forged"})
+            with self.assertRaises(PermissionError): service.portal("settings", {"token": "live-token"})
+
     def test_requested_login_mode_does_not_mislabel_the_live_service(self):
         sys.path.insert(0, str(ROOT / "services/rx-appd"))
         from daemon import DesktopService
