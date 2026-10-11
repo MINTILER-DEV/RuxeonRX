@@ -54,6 +54,8 @@ Copy the single disk to `out/desktop/ruxeonrx-0.5.qcow2`, then run:
 The graphical session appears directly in the QEMU window. `-SafeMode` requests
 the recovery session. `-Acceleration whpx` is optional where Windows Hypervisor
 Platform is enabled. The Windows launcher does not expose guest SSH ports.
+If your PowerShell policy blocks scripts, launch with a process-scoped override:
+`powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-windows.ps1`.
 
 ## Acceptance evidence
 
@@ -64,10 +66,13 @@ and the actual file picker, checks file-open intents and a regular native app,
 updates/repairs/rolls back an executable package, writes recovery/diagnostic
 artifacts, reboots, verifies version/permission/settings persistence, relaunches
 the app, verifies uninstall cleanup and exact restore, kills real services to
-check supervised recovery, and boots into safe mode. Screenshots/logs are retained on
+check supervised recovery, and boots into safe mode with corrupted saved state
+before restoring the known-good snapshot. Screenshots/logs are retained on
 failure. The host integration suite additionally verifies executable output,
 tamper rejection/repair, checksummed source downloads, portal authorization,
 snapshot traversal rejection and exact restoration.
+Acceptance records the actual disk SHA-256 and guest build revision and starts
+with `passed: false`, so a failed rerun cannot leave a stale success result.
 
 ## Tester checklist
 

@@ -92,7 +92,7 @@ def build(args):
             if process.poll() is None:
                 process.terminate()
                 process.wait(timeout=15)
-    manifest = {"version": "0.5.0-alpha", "revision": revision, "base": lock,
+    manifest = {"version": "0.5.0-alpha", "revision": revision, "architecture": "x86_64", "base": lock,
                 "disk_sha256": hashlib.file_digest(disk.open("rb"), "sha256").hexdigest()}
     (OUT / "artifact.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("Built " + str(disk), flush=True)

@@ -33,7 +33,7 @@ chmod +x /opt/RuxeonRX/tools/rxctl /opt/RuxeonRX/tools/rx-session
 printf 'rx ALL=(root) NOPASSWD: /sbin/poweroff, /sbin/reboot\n' > /etc/sudoers.d/ruxeonrx-power
 chmod 0440 /etc/sudoers.d/ruxeonrx-power
 python3 /opt/RuxeonRX/tools/rx-package.py
-printf '{"version":"0.5.0-alpha","revision":"%s","base":"Debian 13"}\n' "$revision" > /etc/ruxeonrx/build.json
+printf '{"version":"0.5.0-alpha","revision":"%s","architecture":"x86_64","base":"Debian 13"}\n' "$revision" > /etc/ruxeonrx/build.json
 cat > /etc/os-release <<EOF
 PRETTY_NAME="RuxeonRX 0.5 Alpha (Debian 13)"
 NAME=RuxeonRX

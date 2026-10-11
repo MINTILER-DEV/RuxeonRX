@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run and test the complete desktop disk on Linux or Windows."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -43,6 +44,9 @@ def main():
     overlay = out / "acceptance.qcow2"
     if overlay.exists(): parser.error("acceptance overlay exists; archive it before rerunning")
     subprocess.run(["qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", str(disk), str(overlay)], check=True)
+    report = {"passed": False, "completed": [], "disk": str(disk), "disk_sha256": hashlib.file_digest(disk.open("rb"), "sha256").hexdigest(), "acceleration": args.accel}
+    report_path = out / "acceptance.json"
+    report_path.write_text(json.dumps(report, indent=2))
     key = out / "builder-key"
     requested_safe = args.safe
     for phase in ("initial", "resume", "safe"):
@@ -51,6 +55,7 @@ def main():
             vm = subprocess.Popen(command(args, overlay, out / (phase + "-serial.log")), stdout=log, stderr=subprocess.STDOUT)
             try:
                 ssh = image.wait_ssh(key, args.port, vm)
+                report["guest_build"] = json.loads(subprocess.check_output(ssh + ["cat /etc/ruxeonrx/build.json"], text=True))
                 uid = subprocess.check_output(ssh + ["id -u rx"], text=True).strip()
                 guest = f"runuser -u rx -- env DISPLAY=:0 XAUTHORITY=/home/rx/.Xauthority XDG_RUNTIME_DIR=/run/user/{uid} RX_RUNTIME=/run/user/{uid}/ruxeonrx python3 /opt/RuxeonRX/tests/e2e/guest_desktop.py --phase {phase}"
                 acceptance = subprocess.run(ssh + [guest])
@@ -59,9 +64,16 @@ def main():
                     raise RuntimeError("graphical acceptance failed; screenshot and serial log preserved")
                 subprocess.run(ssh + ["sync; shutdown -h now"], check=True)
                 vm.wait(timeout=90)
+            except Exception as error:
+                report.update(failed_phase=phase, error=str(error))
+                report_path.write_text(json.dumps(report, indent=2))
+                raise
             finally:
                 if vm.poll() is None: vm.terminate(); vm.wait(timeout=15)
-    (out / "acceptance.json").write_text(json.dumps({"passed": True, "phases": ["graphical lifecycle and portals", "reboot persistence and crash recovery", "safe boot and snapshot restore"], "disk": str(disk)}, indent=2))
+        report["completed"].append(phase)
+        report_path.write_text(json.dumps(report, indent=2))
+    report["passed"] = True
+    report_path.write_text(json.dumps(report, indent=2))
     print("RX 0.5 graphical desktop and reboot acceptance passed")
 
 
