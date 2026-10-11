@@ -111,6 +111,7 @@ class Desktop(Adw.Application):
             self.build_apps(); self.build_sources(); self.build_settings(); self.build_recovery(); self.build_diagnostics()
             self.notification_view = Gtk.Label(wrap=True, xalign=0, selectable=True); self.pages["notifications"].append(self.notification_view)
             self.permission_group = self.group(self.pages["permissions"], "Application access", "Select an app in Applications. Changes to network access take effect after stopping and relaunching the app.")
+            self.stack.connect("notify::visible-child-name", lambda unused, parameter: self.load_preferences() if self.stack.get_visible_child_name() == "settings" else None)
             self.refresh()
             GLib.timeout_add(500, self.ready)
         self.stack.set_visible_child_name(page if page in self.pages else "apps")
@@ -140,6 +141,10 @@ class Desktop(Adw.Application):
 
     def refresh(self):
         self.call("apps", self.render_apps, query=self.search.get_text())
+        if self.stack.get_visible_child_name() == "settings": self.load_preferences()
+
+    def load_preferences(self):
+        if not self.safe_mode: self.call("settings", self.render_settings)
 
     def render_apps(self, records):
         old = self.selection; self.apps = records
@@ -244,24 +249,43 @@ class Desktop(Adw.Application):
     def build_settings(self):
         parent = self.pages["settings"]
         self.settings_group = self.group(parent, "Appearance and accessibility", "Preferences persist across login. System settings provide display, sound, network, keyboard, privacy and printer controls.")
+        self.settings_widgets = {}; self.loading_settings = False
+        if self.safe_mode:
+            self.settings_group.set_sensitive(False)
+            self.settings_group.set_description("Unavailable in safe mode. Restore a snapshot and restart in normal mode to edit preferences.")
         self.call("settings", self.render_settings) if not self.safe_mode else self.render_settings({"appearance.high_contrast": False, "appearance.text_scale": 1.0, "input.touchpad_natural_scroll": True})
         integrations = self.group(parent, "System controls")
         for name, panel in (("Display", "display"), ("Sound", "sound"), ("Network", "network"), ("Bluetooth", "bluetooth"), ("Keyboard", "keyboard"), ("Mouse and touchpad", "mouse"), ("Printers", "printers"), ("Privacy", "privacy"), ("User accounts", ("system", "users"))):
             self.row(integrations, name, button=self.button("Open", lambda p=panel: self.system_settings(p)))
 
     def render_settings(self, settings):
+        if self.settings_widgets:
+            self.loading_settings = True
+            try:
+                for key, widget in self.settings_widgets.items():
+                    if key == "appearance.text_scale": widget.set_value(settings[key])
+                    elif key == "appearance.color_scheme": widget.set_selected(["default", "prefer-light", "prefer-dark"].index(settings[key]))
+                    else: widget.set_active(settings.get(key, False))
+            finally: self.loading_settings = False
+            return
         for key, label in (("appearance.high_contrast", "High contrast"), ("input.touchpad_natural_scroll", "Natural touchpad scrolling"), ("input.focus_follows_mouse", "Focus follows mouse")):
             switch = Gtk.Switch(active=settings.get(key, False), valign=Gtk.Align.CENTER)
-            switch.connect("notify::active", lambda widget, unused, k=key: self.mutate("set", key=k, value=widget.get_active()))
+            switch.connect("notify::active", lambda widget, unused, k=key: self.preference(k, widget.get_active()))
             self.row(self.settings_group, label, button=switch)
+            self.settings_widgets[key] = switch
         adjustment = Gtk.Adjustment(value=settings["appearance.text_scale"], lower=0.75, upper=3.0, step_increment=0.25)
         scale = Gtk.SpinButton(adjustment=adjustment, digits=2, valign=Gtk.Align.CENTER)
-        scale.connect("value-changed", lambda widget: self.mutate("set", key="appearance.text_scale", value=widget.get_value()))
+        scale.connect("value-changed", lambda widget: self.preference("appearance.text_scale", widget.get_value()))
         self.row(self.settings_group, "Text scale", button=scale)
+        self.settings_widgets["appearance.text_scale"] = scale
         scheme = Gtk.DropDown.new_from_strings(["System", "Light", "Dark"])
         values = ["default", "prefer-light", "prefer-dark"]; scheme.set_selected(values.index(settings.get("appearance.color_scheme", "prefer-dark")))
-        scheme.connect("notify::selected", lambda widget, unused: self.mutate("set", key="appearance.color_scheme", value=values[widget.get_selected()]))
+        scheme.connect("notify::selected", lambda widget, unused: self.preference("appearance.color_scheme", values[widget.get_selected()]))
         self.row(self.settings_group, "Color scheme", button=scheme)
+        self.settings_widgets["appearance.color_scheme"] = scheme
+
+    def preference(self, key, value):
+        if not self.loading_settings: self.mutate("set", key=key, value=value)
 
     def system_settings(self, panel=None):
         try: subprocess.Popen(["gnome-control-center"] + ([panel] if isinstance(panel, str) else list(panel or [])))
