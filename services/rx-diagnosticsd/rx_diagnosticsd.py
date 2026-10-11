@@ -10,6 +10,8 @@ import zipfile
 SECRET = re.compile(r"(?i)(token|password|secret|authorization|api[_-]?key)([\"']?\s*[:=]\s*[\"']?)([^\s,\"']+)")
 URL_SECRET = re.compile(r"(?i)([?&](?:token|key|secret)=)[^&\s\"]+")
 URL_CREDENTIALS = re.compile(r"(?i)(https?://)[^/\s:@]+:[^@/\s]+@")
+JSON_SECRET = re.compile(r'(?i)("(?:token|password|secret|authorization|api[_-]?key)"\s*:\s*)"(?:[^"\\]|\\.)*"')
+AUTHORIZATION = re.compile(r"(?i)(authorization[\"']?\s*[:=]\s*[\"']?)(?:bearer|basic)\s+[^\s,\"']+")
 
 
 class Diagnostics:
@@ -24,6 +26,8 @@ class Diagnostics:
         username = os.environ.get("USERNAME") or os.environ.get("USER")
         if username:
             result = re.sub(r"(?<![\w.-])" + re.escape(username) + r"(?![\w.-])", "<user>", result)
+        result = JSON_SECRET.sub(r'\1"<redacted>"', result)
+        result = AUTHORIZATION.sub(r"\1<redacted>", result)
         result = SECRET.sub(lambda match: match.group(1) + match.group(2) + "<redacted>", result)
         result = URL_SECRET.sub(lambda match: match.group(1) + "<redacted>", result)
         return URL_CREDENTIALS.sub(r"\1<redacted>@", result)

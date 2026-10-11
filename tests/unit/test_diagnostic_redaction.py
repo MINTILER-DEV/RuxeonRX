@@ -14,7 +14,8 @@ class DiagnosticRedaction(unittest.TestCase):
         with patch.dict(os.environ, {"USER": "rx", "USERNAME": "rx"}):
             result = Diagnostics(Path("/home/rx/state"), {}).scrub(
                 'org.ruxeonrx.notes {"token": "private-token", "api_key": "private-key"} '
-                'https://person:private-password@example.org/catalog?token=private-query')
-        for secret in ("private-token", "private-key", "private-password", "private-query"):
+                'https://person:private-password@example.org/catalog?token=private-query '
+                'Authorization: Bearer private-bearer {"password": "private phrase"}')
+        for secret in ("private-token", "private-key", "private-password", "private-query", "private-bearer", "private phrase"):
             self.assertNotIn(secret, result)
         self.assertIn("org.ruxeonrx.notes", result)
