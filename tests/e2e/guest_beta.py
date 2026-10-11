@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 from pathlib import Path
 import signal
 import subprocess
@@ -76,8 +77,10 @@ def main(phase):
         assert client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0"
         xdo("windowactivate", "--sync", window(shell_name)); xdo("key", "F5")
     else:
-        extension = subprocess.check_output(["gnome-extensions", "info", "dash-to-panel@jderose9.github.com"], text=True)
-        assert "ACTIVE" in extension or "ENABLED" in extension, extension
+        def extension_active():
+            extension = subprocess.check_output(["gnome-extensions", "info", "dash-to-panel@jderose9.github.com"], text=True)
+            return any(line.strip() in ("State: ACTIVE", "State: ENABLED") for line in extension.splitlines())
+        wait(extension_active, "active GNOME taskbar extension", timeout=180)
         assert "BOTTOM" in subprocess.check_output(["gsettings", "get", "org.gnome.shell.extensions.dash-to-panel", "panel-position"], text=True)
         assert subprocess.run(["pgrep", "-x", "gnome-shell"], stdout=subprocess.DEVNULL).returncode == 0
         if phase == "initial":
@@ -107,6 +110,10 @@ def main(phase):
             saved = Path.home() / ".local/state/ruxeonrx/data" / app_id / "note.txt"
             wait(lambda: saved.is_file() and "real document" in saved.read_text(), "native app private saved note")
             # Actual taskbar click switches to Files, not a fabricated appd launch count.
+            taskbar_files = wait(lambda: control(atspi, "Files", app="gnome-shell"), "visible taskbar Files button")
+            bounds = taskbar_files.queryComponent().getExtents(atspi.DESKTOP_COORDS)
+            screen_height = int(re.search(r"Height:\s*(\d+)", subprocess.check_output(["xwininfo", "-root"], text=True)).group(1))
+            assert bounds.y + bounds.height // 2 > screen_height * 0.8, "taskbar must actually be at the bottom"
             click(atspi, "Files", app="gnome-shell")
             files = wait(lambda: window("Home") or window("Files"), "Files launched from bottom taskbar")
             xdo("windowactivate", "--sync", files); xdo("key", "alt+F4")
