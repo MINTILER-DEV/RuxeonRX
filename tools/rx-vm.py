@@ -68,6 +68,8 @@ def main():
                 if acceptance.returncode:
                     raise RuntimeError("graphical acceptance failed; guest journal/serial logs and any screenshot preserved")
                 if screenshot.returncode: raise RuntimeError("acceptance screenshot missing")
+                if phase == "initial":
+                    subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), "root@127.0.0.1:/home/rx/desktop-default.png", str(out / "default-desktop.png")], check=True)
                 subprocess.run(ssh + ["sync; shutdown -h now"], check=True)
                 vm.wait(timeout=90)
             except Exception as error:
