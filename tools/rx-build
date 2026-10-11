@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Complete RX 0.5 guest workflow. Legacy proof image lives in rx-health-build.
+# Complete RX 1.0 guest workflow. Legacy proof image lives in rx-health-build.
 set -euo pipefail
 root="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 action="${1:-help}"

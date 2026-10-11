@@ -134,7 +134,8 @@ class AppManager:
         app = self.registry.get(app_id)
         if app is None:
             raise KeyError(app_id)
-        return {"app": app, "permissions": self.portal.decisions(app_id), "file_grants": self.portal.file_grants(app_id), "logs": self.logs(app_id), "storage_bytes": self.storage_bytes(app_id)}
+        enforcement = {capability: "unrestricted-native" if app.get("unrestricted") or not app.get("sandbox") else "per-request-portal" if capability in ("files", "notifications") else "launch-time-network-namespace" if capability == "network" else "not-isolated-on-X11" if capability == "clipboard" else "unavailable" for capability in app["requested_permissions"]}
+        return {"app": app, "permissions": self.portal.decisions(app_id), "permission_enforcement": enforcement, "file_grants": self.portal.file_grants(app_id), "logs": self.logs(app_id), "storage_bytes": self.storage_bytes(app_id)}
 
     def storage_bytes(self, app_id: str) -> int:
         roots = (self.log_root / app_id, self.state_dir / "data" / app_id, self.state_dir / "package-cache" / app_id)

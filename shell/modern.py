@@ -158,15 +158,16 @@ class Desktop(Adw.Application):
         app = details["app"]
         if app["id"] != self.selection: return
         self.detail_row.set_title(app["name"])
-        self.detail_row.set_subtitle("Trusted / unrestricted native app" if app.get("unrestricted") or not app.get("sandbox") else "Sandboxed native package · scoped RX portals")
+        unrestricted = app.get("unrestricted") or not app.get("sandbox")
+        self.detail_row.set_subtitle("Trusted / unrestricted native app" if unrestricted else "Sandboxed native package · scoped RX portals")
         self.detail_label.set_label(f"{app['id']}\nManaged storage: {details['storage_bytes']:,} bytes\n" + "\n".join(details["logs"][-3:]))
         for row in list(getattr(self, "permission_rows", [])): self.permission_group.remove(row)
         self.permission_rows = []
         for capability in app["requested_permissions"]:
-            supported = capability in ("files", "notifications", "network") and not app.get("unrestricted")
+            supported = capability in ("files", "notifications", "network") and not unrestricted
             switch = Gtk.Switch(active=details["permissions"].get(capability, False), valign=Gtk.Align.CENTER, sensitive=supported)
             switch.connect("notify::active", lambda widget, parameter, c=capability, identifier=app["id"]: self.call("decide", app_id=identifier, capability=c, allowed=widget.get_active()))
-            explanation = "Unrestricted app: this control cannot constrain native access" if app.get("unrestricted") else "Not mediated by RX 1.0" if not supported else "Per-request consent" if capability == "files" else "Launch-time namespace policy" if capability == "network" else "Desktop policy"
+            explanation = "Unrestricted app: this control cannot constrain native access" if unrestricted else "Not mediated by RX 1.0" if not supported else "Per-request consent" if capability == "files" else "Launch-time namespace policy" if capability == "network" else "Desktop policy"
             row = self.row(self.permission_group, capability.replace("-", " ").title(), explanation, switch); self.permission_rows.append(row)
 
     def mutate(self, method, **params):
