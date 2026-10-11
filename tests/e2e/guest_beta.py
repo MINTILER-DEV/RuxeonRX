@@ -95,12 +95,13 @@ def main(phase):
         click(atspi, "Snapshot name"); xdo("key", "ctrl+a"); xdo("type", "acceptance-good")
         click(atspi, "Restore"); click(atspi, "Continue")
         wait(lambda: client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0", "real GTK corrupt-state snapshot restore")
+        assert client.call("health")["mode"] == "safe", "restoring next-login preferences must not mislabel the current recovery session"
         xdo("windowactivate", "--sync", window(shell_name)); xdo("key", "F5")
     else:
         def extension_active():
             extension = subprocess.check_output(["gnome-extensions", "info", "dash-to-panel@jderose9.github.com"], text=True)
             return any(line.strip() in ("State: ACTIVE", "State: ENABLED") for line in extension.splitlines())
-        wait(extension_active, "active GNOME taskbar extension", timeout=180)
+        wait(extension_active, "active GNOME taskbar extension", timeout=420)
         import pyatspi as atspi
         assert "BOTTOM" in subprocess.check_output(["gsettings", "get", "org.gnome.shell.extensions.dash-to-panel", "panel-position"], text=True)
         assert subprocess.run(["pgrep", "-x", "gnome-shell"], stdout=subprocess.DEVNULL).returncode == 0

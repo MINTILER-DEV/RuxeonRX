@@ -21,7 +21,7 @@ def run(*args, **kw):
 
 def wait_ssh(key, port, process, limit=600):
     deadline = time.monotonic() + limit
-    args = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ConnectTimeout=3", "-i", str(key), "-p", str(port), "root@127.0.0.1"]
+    args = ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-o", "ConnectTimeout=10", "-i", str(key), "-p", str(port), "root@127.0.0.1"]
     while time.monotonic() < deadline:
         if process.poll() is not None:
             raise RuntimeError("builder exited; inspect out/desktop/builder.log")
