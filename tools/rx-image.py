@@ -32,19 +32,25 @@ def wait_ssh(key, port, process, limit=600):
 
 
 def build(args):
-    required = ("qemu-img", "qemu-system-x86_64", "ssh", "scp", "ssh-keygen") + (() if args.code_only else ("xorriso",))
+    required = ("qemu-img", "qemu-system-x86_64", "ssh", "scp", "ssh-keygen") + (() if args.refresh else ("xorriso",))
     for tool in required:
         if not shutil.which(tool):
             raise RuntimeError("missing tool: " + tool)
     OUT.mkdir(parents=True, exist_ok=True)
     lock = json.loads((ROOT / "build/base.lock.json").read_text())
     base = OUT / lock["image"]
-    if not args.code_only and not base.exists():
+    disk = OUT / "ruxeonrx-1.0.qcow2"
+    if args.code_only and not args.refresh:
+        raise ValueError("--code-only requires --refresh and an already-provisioned disk")
+    if args.refresh:
+        if not disk.is_file(): raise ValueError("refresh requires an already-provisioned disk")
+        previous = json.loads((OUT / "artifact.json").read_text())
+        if previous["base"] != lock: raise ValueError("base lock changed; build a new image from the pinned base")
+    if not args.refresh and not base.exists():
         print("Downloading pinned Debian base", flush=True)
         urllib.request.urlretrieve(lock["url"], base)
-    if not args.code_only and hashlib.file_digest(base.open("rb"), "sha512").hexdigest() != lock["sha512"]:
+    if not args.refresh and hashlib.file_digest(base.open("rb"), "sha512").hexdigest() != lock["sha512"]:
         raise RuntimeError("base checksum mismatch")
-    disk = OUT / "ruxeonrx-1.0.qcow2"
     if args.code_only and (not args.refresh or not disk.exists()):
         raise ValueError("--code-only requires --refresh and an already-provisioned disk")
     if disk.exists() and not args.refresh:
@@ -63,11 +69,8 @@ def build(args):
     (seed_dir / "user-data").write_text("#cloud-config\ndisable_root: false\nssh_pwauth: false\nusers:\n  - name: root\n    ssh_authorized_keys:\n      - " + pub + "\n")
     (seed_dir / "meta-data").write_text("instance-id: ruxeonrx-builder\nlocal-hostname: ruxeonrx\n")
     seed = OUT / "seed.iso"
-    if not args.code_only:
+    if not args.refresh:
         run("xorriso", "-as", "mkisofs", "-quiet", "-V", "cidata", "-o", str(seed), str(seed_dir))
-    else:
-        previous = json.loads((OUT / "artifact.json").read_text())
-        if previous["base"] != lock: raise ValueError("base lock changed; perform a full Linux rebuild")
     source = OUT / "source.tar.gz"
     with tarfile.open(source, "w:gz") as archive:
         for directory in ("build", "images", "packages", "services", "shell", "sdk", "tests", "tools", "docs"):
@@ -78,14 +81,14 @@ def build(args):
     qemu = ["qemu-system-x86_64", "-m", "2048", "-smp", "2", "-accel", args.accel,
             "-drive", f"file={disk},format=qcow2,if=virtio",
             "-nic", f"user,hostfwd=tcp:127.0.0.1:{args.port}-:22", "-display", "none", "-serial", "stdio", "-monitor", "none"]
-    if not args.code_only: qemu += ["-cdrom", str(seed)]
+    if not args.refresh: qemu += ["-cdrom", str(seed)]
     with (OUT / "builder.log").open("w") as log:
         process = subprocess.Popen(qemu, stdout=log, stderr=subprocess.STDOUT)
         try:
             ssh = wait_ssh(key, args.port, process)
             # Refresh boots the existing OS. Stop its desktop before replacing
             # session code; the builder's SSH/network connection remains live.
-            run(*ssh, "if systemctl cat lightdm.service >/dev/null 2>&1; then systemctl stop lightdm.service; fi")
+            run(*ssh, "if systemctl cat display-manager.service >/dev/null 2>&1; then systemctl stop display-manager.service; fi")
             run("scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), str(source), "root@127.0.0.1:/tmp/ruxeonrx-source.tar.gz")
             provision = ("RX_SKIP_APT=1 " if args.code_only else "") + "bash /opt/RuxeonRX/build/provision.sh " + revision + " " + lock["snapshot"]
             run(*ssh, "mkdir -p /opt/RuxeonRX && tar -xzf /tmp/ruxeonrx-source.tar.gz -C /opt/RuxeonRX && " + provision)
