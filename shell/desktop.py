@@ -206,7 +206,7 @@ class Desktop:
         if not self.selection: return
         detail = self.client.call("inspect", app_id=self.selection)
         dialog = tk.Toplevel(self.root); dialog.title("Application diagnostics"); dialog.geometry("720x450")
-        viewer = tk.Text(dialog, wrap="word", font=("DejaVu Sans Mono", 10)); viewer.pack(fill="both", expand=True)
+        viewer = tk.Text(dialog, wrap="word", font=("DejaVu Sans Mono", max(10, self.ui_font_size - 1))); viewer.pack(fill="both", expand=True)
         viewer.insert("1.0", "\n".join(detail["logs"])); viewer.configure(state="disabled")
 
     def remove(self):
@@ -269,6 +269,7 @@ class Desktop:
 
     def apply_style(self, settings):
         size = int(11 * settings["appearance.text_scale"])
+        self.ui_font_size = size
         style = ttk.Style(self.root)
         colours = {"background": "#111111", "foreground": "#ffffff"} if settings["appearance.high_contrast"] else {"background": "#e9eef5", "foreground": "#14243b"}
         style.configure(".", font=("DejaVu Sans", size), **colours)
@@ -278,6 +279,9 @@ class Desktop:
         style.configure("Treeview", font=("DejaVu Sans", size), rowheight=max(36, int(size * 2.7)))
         style.map("TButton", background=[("focus", "#355ed8"), ("active", "#355ed8")], foreground=[("focus", "#ffffff"), ("active", "#ffffff")])
         self.app_canvas.configure(background=colours["background"])
+        self.settings_canvas.configure(background=colours["background"])
+        for widget in (self.details, self.notification_text):
+            widget.configure(background=colours["background"], foreground=colours["foreground"], insertbackground=colours["foreground"], font=("DejaVu Sans", max(10, size - 1)))
         self.root.after_idle(self.layout_apps)
         if os.name == "posix":
             import subprocess

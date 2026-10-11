@@ -70,6 +70,7 @@ def main(phase):
         assert app.get("pinned"), "launcher pin did not persist across reboot"
         assert client.call("inspect", app_id=app_id)["permissions"]["notifications"] is True
         assert client.call("settings")["appearance.text_scale"] == 1.25
+        assert client.call("settings")["appearance.high_contrast"] is True
         client.call("launch", app_id=app_id)
         wait(lambda: window("RX Notes"), "native app relaunch after reboot")
         client.call("remove", app_id=app_id, purge_data=True)
@@ -144,8 +145,12 @@ def main(phase):
         client.call("repair", app_id=app_id)
         client.call("pin", app_id=app_id, pinned=True)
         client.call("set", key="appearance.text_scale", value=1.25)
+        client.call("set", key="appearance.high_contrast", value=True)
         client.call("snapshot", name="acceptance-good")
         client.call("bundle", path="/home/rx/support-acceptance.zip")
+        xdo("windowactivate", "--sync", shell); xdo("key", "F5")
+        xdo("windowactivate", "--sync", notes)
+        time.sleep(0.5)
     subprocess.run(["scrot", "--overwrite", "/home/rx/desktop-acceptance.png"], check=True)
     print(json.dumps({"phase": phase, "passed": True, "real_graphics": True}), flush=True)
 
