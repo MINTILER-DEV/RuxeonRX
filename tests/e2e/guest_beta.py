@@ -59,6 +59,11 @@ def open_picker(filename):
     xdo("key", "--clearmodifiers", "ctrl+l"); xdo("type", "--clearmodifiers", str(filename)); xdo("key", "Return")
 
 
+def class_window(name):
+    result = subprocess.run(["xdotool", "search", "--onlyvisible", "--class", name], capture_output=True, text=True)
+    return result.stdout.strip().splitlines()[0] if result.returncode == 0 else None
+
+
 def main(phase):
     runtime, client, atspi = setup()
     shell_name = "RX Recovery" if phase == "safe" else "RX Apps"
@@ -100,6 +105,16 @@ def main(phase):
             click(atspi, "Files", app="gnome-shell")
             files = wait(lambda: window("Home") or window("Files"), "Files launched from bottom taskbar")
             xdo("windowactivate", "--sync", files); xdo("key", "alt+F4")
+            for suffix, wm_class, intent in (("org.gnome.console", "org.gnome.Console", None), ("org.gnome.texteditor", "org.gnome.TextEditor", str(document)), ("firefox-esr", "firefox", "about:blank")):
+                native_id = "org.ruxeonrx.import." + suffix
+                client.call("launch", app_id=native_id, **({"path": intent} if intent else {}))
+                native_window = wait(lambda name=wm_class: class_window(name), "real trusted native window: " + suffix, timeout=240)
+                print("BASE_NATIVE_WINDOW=" + native_id, flush=True)
+                xdo("windowactivate", "--sync", native_window); xdo("key", "alt+F4")
+            assert client.call("defaults")["https:"] == "org.ruxeonrx.import.firefox-esr"
+            xdo("windowactivate", "--sync", shell); click(atspi, "System settings")
+            settings_window = wait(lambda: class_window("org.gnome.Settings"), "real native system settings", timeout=180)
+            xdo("windowactivate", "--sync", settings_window); xdo("key", "alt+F4")
             xdo("windowactivate", "--sync", shell); xdo("key", "alt+F4")
             wait(lambda: not window("RX Apps"), "management window closed without stopping permission UI")
             subprocess.run(["python3", str(ROOT / "shell/modern.py"), "--page", "apps"], check=True, timeout=30)
