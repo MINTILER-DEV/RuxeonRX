@@ -144,7 +144,18 @@ EOF
     chmod 0600 /etc/NetworkManager/system-connections/ruxeonrx-wired.nmconnection
 fi
 # The next boot uses NetworkManager; do not interrupt the builder's live SSH lease.
-systemctl disable systemd-networkd.service systemd-networkd.socket networking.service || true
+if command -v netplan >/dev/null; then
+    install -d /etc/netplan
+    if [[ ! -f /etc/netplan/99-ruxeonrx-desktop.yaml ]]; then
+        printf 'network:\n  version: 2\n  renderer: NetworkManager\n' > /etc/netplan/99-ruxeonrx-desktop.yaml
+        chmod 0600 /etc/netplan/99-ruxeonrx-desktop.yaml
+    fi
+    netplan generate
+fi
+# Netplan's generator can create runtime wants even after disable. Masking the
+# competing guest units takes effect on the next boot, without stopping SSH now.
+systemctl mask systemd-networkd.service systemd-networkd.socket
+if systemctl cat networking.service >/dev/null 2>&1; then systemctl disable networking.service; fi
 dpkg-query -W -f='${Package}=${Version}\n' > /etc/ruxeonrx/packages.lock
 apt-get clean
 rm -f /tmp/ruxeonrx-source.tar.gz
