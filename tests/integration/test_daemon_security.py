@@ -6,6 +6,7 @@ import sys
 import tempfile
 import time
 import unittest
+import zipfile
 from unittest.mock import Mock
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -21,8 +22,17 @@ class DaemonTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); service = DesktopService(root / "state", root / "run")
             app_id = "org.ruxeonrx.native-test-app"
-            service.dispatch("install", {"path": str(ROOT / "packages/catalog/rx-notes-0.1.0.rxpkg")})
-            for method, params in (("update", {"path": str(ROOT / "packages/catalog/rx-notes-0.2.0.rxpkg")}), ("repair", {"app_id": app_id}), ("rollback", {"app_id": app_id})):
+            packages = []
+            for version in ("0.1.0", "0.2.0"):
+                manifest = json.loads((ROOT / "packages/native-test-app/manifest.json").read_text())
+                manifest["version"] = version
+                package = root / (version + ".rxpkg")
+                with zipfile.ZipFile(package, "w") as archive:
+                    archive.writestr("manifest.json", json.dumps(manifest))
+                    archive.writestr("main.py", "print('regression fixture')")
+                packages.append(package)
+            service.dispatch("install", {"path": str(packages[0])})
+            for method, params in (("update", {"path": str(packages[1])}), ("repair", {"app_id": app_id}), ("rollback", {"app_id": app_id})):
                 process = Mock(); process.poll.return_value = None
                 service.processes[app_id] = process; service.tokens["obsolete"] = app_id
                 service.requests["pending"] = {"app_id": app_id, "pending": True}
