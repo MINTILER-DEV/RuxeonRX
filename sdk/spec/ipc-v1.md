@@ -25,7 +25,7 @@ Controller `launch` accepts an optional `path`; `open-with` takes `handler`
 and optional `path`. For sandboxed RX packages, local files and file URIs require consent and file
 selection. Declared protocol URIs are delivered as text intents, not executed
 as commands. The GTK 4 RX Notes sample implements all three app methods and
-persists documents under its private `RX_APP_DATA` directory. Trusted native
+persists documents under its private `RX_DATA_DIR` directory. Trusted native
 desktop imports receive file/link intents as an argv argument, never a shell
 command; they are unrestricted and do not pretend to require RX file mediation.
 Notification records include a unique `id`, so identical repeated messages are

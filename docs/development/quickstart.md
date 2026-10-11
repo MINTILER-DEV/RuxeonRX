@@ -1,6 +1,6 @@
 # Development quick start
 
-See [desktop-alpha.md](desktop-alpha.md) for prerequisites, build details,
+See [desktop-beta.md](desktop-beta.md) for prerequisites, build details,
 Windows launch, real guest acceptance and the external tester checklist.
 
 On the Linux server:

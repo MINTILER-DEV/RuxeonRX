@@ -11,9 +11,21 @@ sys.path[:0] = [str(ROOT / "shell"), str(ROOT / "services/rx-settingsd")]
 from system_integration import apply_settings, sync_favorites, reconcile_favorites
 from rx_settingsd import Settings
 from app_manager import AppManager
+from rx_notificationd import NotificationCenter
 
 
 class DesktopIntegration(unittest.TestCase):
+    def test_repeated_notifications_have_distinct_events_and_denial_posts_nothing(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            center = NotificationCenter(Path(temporary))
+            self.assertFalse(center.post("org.test.app", "Same title", "Same body", False))
+            self.assertEqual([], center.list())
+            self.assertTrue(center.post("org.test.app", "Same title", "Same body", True))
+            self.assertTrue(center.post("org.test.app", "Same title", "Same body", True))
+            entries = center.list()
+            self.assertEqual(2, len(entries))
+            self.assertNotEqual(entries[0]["id"], entries[1]["id"])
+
     def test_preferences_apply_to_real_gnome_schemas_only_in_rx_session(self):
         with tempfile.TemporaryDirectory() as temporary:
             settings = Settings(Path(temporary))

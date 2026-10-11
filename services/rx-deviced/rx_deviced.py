@@ -23,7 +23,7 @@ class DeviceInventory:
             "storage": self._names("/sys/block"),
             "input": self._names("/sys/class/input"),
             "displays": self._names("/sys/class/drm"),
-            "firmware_updates": {"status": "not-configured", "message": "QEMU alpha does not update host firmware."},
+            "firmware_updates": {"status": "not-configured", "message": "The QEMU beta does not update host firmware; reported devices are guest-only."},
             "renderer": self._command(["glxinfo", "-B"]),
             "network_status": self._command(["nmcli", "-t", "device", "status"]),
             "audio_status": self._command(["wpctl", "status"]),

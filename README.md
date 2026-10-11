@@ -1,7 +1,7 @@
 # RuxeonRX
 
 RuxeonRX is a Linux desktop operating system project. RX 1.0 targets a native
-x86_64 QEMU desktop alpha; later releases add web, Android and Windows runtimes.
+x86_64 QEMU native desktop beta; later releases add web, Android and Windows runtimes.
 
 The desktop disk contains a pinned Debian 13 base, Linux kernel, systemd,
 LightDM, GNOME window management, a persistent bottom taskbar, modern GTK RX apps, and the app,
