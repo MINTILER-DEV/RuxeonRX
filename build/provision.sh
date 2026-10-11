@@ -96,7 +96,7 @@ Type=Application
 Name=RX $page
 Exec=python3 /opt/RuxeonRX/shell/modern.py --page $section
 Icon=/opt/RuxeonRX/shell/assets/ruxeonrx.svg
-StartupWMClass=org.ruxeonrx.Desktop
+StartupWMClass=org.ruxeonrx.Apps
 Categories=System;
 EOF
 done

@@ -19,7 +19,7 @@ from rxipc import Client
 
 class Desktop(Adw.Application):
     def __init__(self):
-        super().__init__(application_id="org.ruxeonrx.Desktop", flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
+        super().__init__(application_id="org.ruxeonrx.Apps", flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE)
         self.client = Client(Path(os.environ.get("RX_RUNTIME", str(Path(os.environ["XDG_RUNTIME_DIR"]) / "ruxeonrx"))) / "appd.sock")
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self.window = None; self.selection = None; self.apps = []; self.prompting = set(); self.poll_busy = False
