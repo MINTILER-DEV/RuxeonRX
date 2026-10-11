@@ -67,8 +67,9 @@ class DesktopIntegration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); manager = AppManager(root / "state")
             path = root / "sample.desktop"
-            path.write_text('[Desktop Entry]\nType=Application\nName=Sample\nExec=python3 -c "import sys; print(sys.argv[1])" %u\n')
+            path.write_text('[Desktop Entry]\nType=Application\nName=Sample\nExec=python3 -c "import sys; print(sys.argv[1])" %u\nMimeType=text/plain;x-scheme-handler/https;\n')
             app = manager.import_desktop(path)
+            self.assertEqual(["text/plain", "https:"], app["handlers"])
             process = manager.execute(app["id"], intent="file:///tmp/hello;not-a-shell-command.txt")
             self.assertEqual(0, process.wait(timeout=10))
             self.assertIn("file:///tmp/hello;not-a-shell-command.txt", "\n".join(manager.logs(app["id"])))
