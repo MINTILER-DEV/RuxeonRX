@@ -20,8 +20,7 @@ def setup():
     environment = runtime / "environment.json"
     wait(environment.is_file, "real session environment", timeout=420)
     os.environ.update(json.loads(environment.read_text()))
-    import pyatspi
-    return runtime, Client(runtime / "appd.sock"), pyatspi
+    return runtime, Client(runtime / "appd.sock")
 
 
 def descendants(node, depth=0):
@@ -44,9 +43,28 @@ def control(atspi, name, app=None, prefix=False):
 
 def click(atspi, name, app=None):
     node = wait(lambda: control(atspi, name, app), "visible accessible control: " + name)
-    extents = node.queryComponent().getExtents(atspi.DESKTOP_COORDS)
+    if app == "gnome-shell":
+        extents = node.queryComponent().getExtents(atspi.DESKTOP_COORDS)
+        origin_x = origin_y = 0
+    else:
+        # GTK 4.18 explicitly returns (0, 0) for unsupported SCREEN
+        # coordinates. Its WINDOW coordinates plus the real X11 origin are
+        # usable; raise that actual window before clicking an obscured control.
+        parent = node; target = None
+        while parent:
+            if parent.name: target = window(parent.name)
+            if target: break
+            parent = parent.parent
+        if not target: target = xdo("getactivewindow")
+        xdo("windowactivate", "--sync", target)
+        extents = node.queryComponent().getExtents(atspi.WINDOW_COORDS)
+        geometry = subprocess.check_output(["xwininfo", "-id", target], text=True)
+        origin_x = int(re.search(r"Absolute upper-left X:\s*(-?\d+)", geometry).group(1))
+        origin_y = int(re.search(r"Absolute upper-left Y:\s*(-?\d+)", geometry).group(1))
     assert extents.width > 0 and extents.height > 0
-    xdo("mousemove", str(extents.x + extents.width // 2), str(extents.y + extents.height // 2)); xdo("click", "1")
+    x = origin_x + extents.x + extents.width // 2; y = origin_y + extents.y + extents.height // 2
+    print(f"REAL_UI_CLICK={name}@{x},{y}", flush=True)
+    xdo("mousemove", str(x), str(y)); xdo("click", "1")
 
 
 def consent(atspi, allowed):
@@ -66,12 +84,13 @@ def class_window(name):
 
 
 def main(phase):
-    runtime, client, atspi = setup()
+    runtime, client = setup()
     shell_name = "RX Recovery" if phase == "safe" else "RX Apps"
     wait(lambda: (runtime / "graphical-ready").is_file() and window(shell_name), "real GTK management/recovery window", timeout=420)
     assert client.call("health")["healthy"]
     app_id = "org.ruxeonrx.native-test-app"
     if phase == "safe":
+        import pyatspi as atspi
         assert client.call("health")["mode"] == "safe"
         click(atspi, "Snapshot name"); xdo("key", "ctrl+a"); xdo("type", "acceptance-good")
         click(atspi, "Restore"); click(atspi, "Continue")
@@ -82,6 +101,7 @@ def main(phase):
             extension = subprocess.check_output(["gnome-extensions", "info", "dash-to-panel@jderose9.github.com"], text=True)
             return any(line.strip() in ("State: ACTIVE", "State: ENABLED") for line in extension.splitlines())
         wait(extension_active, "active GNOME taskbar extension", timeout=180)
+        import pyatspi as atspi
         assert "BOTTOM" in subprocess.check_output(["gsettings", "get", "org.gnome.shell.extensions.dash-to-panel", "panel-position"], text=True)
         assert subprocess.run(["pgrep", "-x", "gnome-shell"], stdout=subprocess.DEVNULL).returncode == 0
         if phase == "initial":
