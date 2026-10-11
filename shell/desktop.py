@@ -38,7 +38,18 @@ class Desktop:
         ttk.Button(header, text="Power", command=self.power).pack(side="right")
         self.tabs = ttk.Notebook(self.root)
         self.tabs.pack(fill="both", expand=True, padx=12)
-        self.app_frame = ttk.Frame(self.tabs, padding=12)
+        self.app_tab = ttk.Frame(self.tabs)
+        self.app_canvas = tk.Canvas(self.app_tab, highlightthickness=0)
+        app_vertical = ttk.Scrollbar(self.app_tab, orient="vertical", command=self.app_canvas.yview)
+        app_horizontal = ttk.Scrollbar(self.app_tab, orient="horizontal", command=self.app_canvas.xview)
+        self.app_canvas.configure(yscrollcommand=app_vertical.set, xscrollcommand=app_horizontal.set)
+        app_vertical.pack(side="right", fill="y")
+        app_horizontal.pack(side="bottom", fill="x")
+        self.app_canvas.pack(side="left", fill="both", expand=True)
+        self.app_frame = ttk.Frame(self.app_canvas, padding=12)
+        self.app_window = self.app_canvas.create_window(0, 0, window=self.app_frame, anchor="nw")
+        self.app_canvas.bind("<Configure>", self.layout_apps)
+        self.app_frame.bind("<Configure>", self.layout_apps)
         self.permission_frame = ttk.Frame(self.tabs, padding=12)
         self.settings_tab = ttk.Frame(self.tabs)
         settings_canvas = tk.Canvas(self.settings_tab, highlightthickness=0)
@@ -52,7 +63,7 @@ class Desktop:
         settings_canvas.bind("<Configure>", lambda event: settings_canvas.itemconfigure(settings_window, width=event.width))
         self.settings_canvas = settings_canvas
         self.support_frame = ttk.Frame(self.tabs, padding=12)
-        self.tabs.add(self.app_frame, text="Applications")
+        self.tabs.add(self.app_tab, text="Applications")
         self.tabs.add(self.permission_frame, text="Permissions")
         self.tabs.add(self.settings_tab, text="Settings")
         self.tabs.add(self.support_frame, text="Diagnostics & recovery")
@@ -93,6 +104,7 @@ class Desktop:
         self.search = ttk.Entry(toolbar, textvariable=self.query, width=28)
         self.search.pack(side="left", padx=4)
         self.search.bind("<Control-a>", self.select_all_search)
+        self.search.bind("<FocusIn>", lambda event: self.reveal_app_widget(self.search))
         ttk.Label(toolbar, text="Search apps (Ctrl+F)").pack(side="left")
         ttk.Button(toolbar, text="Install package…", command=self.install).pack(side="right")
         ttk.Button(toolbar, text="Install RX Notes", command=self.install_sample).pack(side="right", padx=4)
@@ -108,14 +120,26 @@ class Desktop:
         controls = ttk.Frame(self.app_frame)
         controls.pack(fill="x", pady=8)
         for index, (label, command) in enumerate((("Launch", self.launch), ("Update…", self.update), ("Sample update", self.update_sample), ("Repair", lambda: self.operation("repair")), ("Roll back", lambda: self.operation("rollback")), ("Remove", self.remove), ("Import .desktop…", self.import_desktop), ("View logs", self.view_logs), ("Pin / unpin", self.pin), ("Reset app data", self.reset_data))):
-            ttk.Button(controls, text=label, command=command).grid(row=index // 4, column=index % 4, padx=3, pady=3, sticky="ew")
+            button = ttk.Button(controls, text=label, command=command)
+            button.grid(row=index // 4, column=index % 4, padx=3, pady=3, sticky="ew")
+            button.bind("<FocusIn>", lambda event, widget=button: self.reveal_app_widget(widget))
         for index in range(4): controls.columnconfigure(index, weight=1)
         self.details = tk.Text(self.app_frame, height=6, wrap="word", state="disabled", font=("DejaVu Sans", 10))
         self.details.pack(fill="x")
 
     def focus_search(self):
-        self.tabs.select(self.app_frame)
+        self.tabs.select(self.app_tab)
         self.search.focus_set()
+
+    def layout_apps(self, event=None):
+        self.app_canvas.itemconfigure(self.app_window, width=max(self.app_canvas.winfo_width(), self.app_frame.winfo_reqwidth()), height=max(self.app_canvas.winfo_height(), self.app_frame.winfo_reqheight()))
+        self.app_canvas.configure(scrollregion=self.app_canvas.bbox("all"))
+
+    def reveal_app_widget(self, widget):
+        for axis, coordinate, viewport, total, extent in (("y", widget.winfo_rooty() - self.app_frame.winfo_rooty(), self.app_canvas.winfo_height(), self.app_frame.winfo_height(), widget.winfo_height()), ("x", widget.winfo_rootx() - self.app_frame.winfo_rootx(), self.app_canvas.winfo_width(), self.app_frame.winfo_width(), widget.winfo_width())):
+            origin = self.app_canvas.canvasy(0) if axis == "y" else self.app_canvas.canvasx(0)
+            if coordinate < origin or coordinate + extent > origin + viewport:
+                getattr(self.app_canvas, axis + "view_moveto")(max(0, coordinate + extent - viewport) / max(1, total))
 
     def select_all_search(self, event=None):
         self.search.selection_range(0, "end")
@@ -253,6 +277,8 @@ class Desktop:
         style.map("Treeview", foreground=[("selected", "#ffffff")], background=[("selected", "#355ed8")])
         style.configure("Treeview", font=("DejaVu Sans", size), rowheight=max(36, int(size * 2.7)))
         style.map("TButton", background=[("focus", "#355ed8"), ("active", "#355ed8")], foreground=[("focus", "#ffffff"), ("active", "#ffffff")])
+        self.app_canvas.configure(background=colours["background"])
+        self.root.after_idle(self.layout_apps)
         if os.name == "posix":
             import subprocess
             try:
