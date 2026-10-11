@@ -25,7 +25,8 @@ def setup():
 
 def descendants(node, depth=0):
     yield node
-    if depth > 18: return
+    # Adwaita preference groups nest real buttons beyond eighteen levels.
+    if depth > 40: return
     try:
         for child in node:
             if child: yield from descendants(child, depth + 1)
