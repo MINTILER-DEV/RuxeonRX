@@ -85,6 +85,10 @@ def main(phase):
         old_pid = json.loads(session.read_text())["pids"]["rx-shell"]
         os.kill(old_pid, signal.SIGTERM)
         wait(lambda: window("RuxeonRX Desktop") not in (None, shell) and client.call("health")["healthy"], "real graphical shell crash recovery")
+        # Safe boot must expose recovery even when user-managed JSON is corrupt.
+        state = Path.home() / ".local/state/ruxeonrx"
+        for filename in ("apps.json", "apps.backup", "settings.json", "sources.json"):
+            (state / filename).write_text("{simulated interrupted write")
     else:
         shell = window("RuxeonRX Desktop")
         xdo("windowactivate", "--sync", shell)

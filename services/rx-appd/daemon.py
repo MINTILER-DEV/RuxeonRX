@@ -27,7 +27,7 @@ class DesktopService:
         self.state = state
         self.runtime = runtime
         self.manager = AppManager(state)
-        if not self.manager.packages.sources():
+        if not (state / "safe-mode").exists() and not self.manager.packages.sources():
             catalog = ROOT / "packages/catalog/index.json"
             if catalog.exists(): self.manager.packages.add_source("ruxeonrx-samples", catalog.as_uri())
         self.settings = Settings(state)

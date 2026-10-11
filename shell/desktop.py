@@ -68,7 +68,11 @@ class Desktop:
         self.root.bind("<Control-r>", lambda event: self.remove())
         self.root.bind("<F5>", lambda event: self.refresh())
         self.query.trace_add("write", lambda *args: self.refresh())
-        self.refresh()
+        try:
+            self.refresh()
+        except Exception as error:
+            if not self.safe_mode: raise
+            self.status.set("Recovery mode: " + str(error) + "; restore a known-good snapshot.")
         self.root.after(300, self.poll)
         self.root.after(500, self.ready)
         self.root.protocol("WM_DELETE_WINDOW", self.root.iconify)
@@ -211,10 +215,8 @@ class Desktop:
         self.call("decide", app_id=self.selection, capability=capability, allowed=allowed); self.refresh()
 
     def build_settings(self):
-        settings = self.client.call("settings")
-        if self.safe_mode:
-            settings["appearance.high_contrast"] = False
-            settings["appearance.text_scale"] = 1.0
+        # Recovery must remain reachable even when the saved settings are broken.
+        settings = {"appearance.high_contrast": False, "appearance.text_scale": 1.0, "input.touchpad_natural_scroll": True, "privacy.telemetry": False, "updates.channel": "stable"} if self.safe_mode else self.client.call("settings")
         for key, label in (("appearance.high_contrast", "High contrast"), ("input.touchpad_natural_scroll", "Natural touchpad scrolling"), ("privacy.telemetry", "Optional telemetry preference (no collection service)")):
             value = tk.BooleanVar(value=settings[key])
             ttk.Checkbutton(self.settings_frame, text=label, variable=value, command=lambda k=key, v=value: self.setting(k, v.get())).pack(anchor="w", pady=10)
