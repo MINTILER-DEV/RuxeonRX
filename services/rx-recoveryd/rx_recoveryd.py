@@ -18,10 +18,15 @@ class Recovery:
         if not name.replace("-", "").replace("_", "").isalnum():
             raise ValueError("snapshot name may contain letters, digits, hyphens, and underscores")
         target = self.snapshot_dir / f"{name}.zip"
-        with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-            for path in sorted(self.state_dir.rglob("*")):
-                if path.is_file() and not path.is_symlink() and self.snapshot_dir not in path.parents and path.relative_to(self.state_dir).parts[0] not in LIVE_STATE:
+        files = [path for path in sorted(self.state_dir.rglob("*")) if path.is_file() and not path.is_symlink() and self.snapshot_dir not in path.parents and path.relative_to(self.state_dir).parts[0] not in LIVE_STATE]
+        if sum(path.stat().st_size for path in files) > 512 * 1024 * 1024:
+            raise ValueError("snapshot exceeds 512 MiB limit")
+        with tempfile.TemporaryDirectory(dir=self.snapshot_dir) as temporary:
+            staged = Path(temporary) / "snapshot.zip"
+            with zipfile.ZipFile(staged, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                for path in files:
                     archive.write(path, path.relative_to(self.state_dir))
+            staged.replace(target)
         return target
 
     def restore(self, name: str) -> int:

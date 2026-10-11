@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "services/rx-recoveryd"))
@@ -10,6 +11,15 @@ from rx_recoveryd import Recovery
 
 
 class RecoveryBoundaries(unittest.TestCase):
+    def test_failed_snapshot_creation_keeps_previous_good_archive(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            state = Path(temporary); recovery = Recovery(state)
+            (state / "apps.json").write_text("known good")
+            target = recovery.create("good"); before = target.read_bytes()
+            with patch.object(zipfile.ZipFile, "write", side_effect=OSError("simulated disk failure")):
+                with self.assertRaises(OSError): recovery.create("good")
+            self.assertEqual(before, target.read_bytes())
+
     def test_rejects_whole_archive_before_modifying_state(self):
         with tempfile.TemporaryDirectory() as temporary:
             state = Path(temporary)
