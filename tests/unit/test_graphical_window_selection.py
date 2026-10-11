@@ -3,16 +3,30 @@ import importlib.util
 from pathlib import Path
 import unittest
 import sys
-from unittest.mock import patch
+from unittest.mock import patch, Mock, call
+from types import SimpleNamespace
 
 path = Path(__file__).resolve().parents[1] / "e2e/guest_desktop.py"
 sys.path.insert(0, str(path.parents[2] / "sdk/bindings/python"))
 spec = importlib.util.spec_from_file_location("guest_window_checks", path)
 guest = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guest)
+sys.path.insert(0, str(path.parent))
+beta_spec = importlib.util.spec_from_file_location("guest_beta_checks", path.parent / "guest_beta.py")
+beta = importlib.util.module_from_spec(beta_spec)
+beta_spec.loader.exec_module(beta)
 
 
 class GraphicalWindowSelection(unittest.TestCase):
+    def test_unsupported_entry_focus_uses_real_window_relative_pointer_coordinates(self):
+        node = Mock(); node.name = "Snapshot name"; node.getRoleName.return_value = "entry"
+        frame = Mock(); frame.name = "RX Recovery"; frame.parent = None; node.parent = frame
+        node.queryComponent.return_value.grabFocus.side_effect = RuntimeError("GTK focus unsupported")
+        node.queryComponent.return_value.getExtents.return_value = SimpleNamespace(x=1, y=2, width=10, height=10)
+        with patch.object(beta, "wait", return_value=node), patch.object(beta, "window", side_effect=lambda title: "501" if title == "RX Recovery" else None), patch.object(beta, "xdo", return_value="") as xdo, patch.object(beta.subprocess, "check_output", return_value="Absolute upper-left X: 100\nAbsolute upper-left Y: 200\n"), patch("builtins.print"):
+            beta.click(SimpleNamespace(WINDOW_COORDS=1), "Snapshot name")
+        xdo.assert_has_calls([call("windowactivate", "--sync", "501"), call("mousemove", "106", "207"), call("click", "1")])
+
     @patch.object(guest.subprocess, "check_output")
     def test_application_leader_is_not_a_user_window(self, output):
         output.side_effect = ["WM_STATE: not found.\n_NET_WM_STATE: not found.", "WM_STATE(WM_STATE):\nwindow state: Normal\n_NET_WM_STATE(ATOM) ="]
