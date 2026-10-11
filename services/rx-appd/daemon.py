@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import signal
 import selectors
 import socket
 import sys
@@ -233,6 +234,9 @@ class DesktopService:
 
 
 def serve(state, runtime):
+    def terminate(*unused):
+        raise SystemExit(0)
+    signal.signal(signal.SIGTERM, terminate)
     runtime.mkdir(parents=True, exist_ok=True, mode=0o700)
     (runtime / "portal").mkdir(exist_ok=True, mode=0o700)
     service = DesktopService(state, runtime)
@@ -269,6 +273,9 @@ def serve(state, runtime):
     finally:
         for process in service.processes.values():
             if process.poll() is None: process.terminate()
+        for process in service.processes.values():
+            try: process.wait(timeout=5)
+            except Exception: process.kill(); process.wait()
         for listener in listeners: listener.close()
         lock.close()
 
