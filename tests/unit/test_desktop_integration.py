@@ -25,6 +25,7 @@ class DesktopIntegration(unittest.TestCase):
             manager.registry.register(manifest)
             with self.assertRaisesRegex(RuntimeError, "native-linux"): manager.execute(manifest["id"])
             self.assertEqual(0, manager.registry.get(manifest["id"])["launch_count"])
+            self.assertEqual({"runtime-unavailable"}, set(manager.inspect(manifest["id"])["permission_enforcement"].values()))
 
     def test_unicode_file_responses_fit_the_bounded_client_reply(self):
         document = "😀" * (1024 * 1024 // 4)
