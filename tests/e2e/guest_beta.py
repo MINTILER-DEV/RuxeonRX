@@ -146,6 +146,7 @@ def main(phase):
         assert "BOTTOM" in subprocess.check_output(["gsettings", "get", "org.gnome.shell.extensions.dash-to-panel", "panel-position"], text=True)
         assert subprocess.run(["pgrep", "-x", "gnome-shell"], stdout=subprocess.DEVNULL).returncode == 0
         if phase == "initial":
+            assert subprocess.check_output(["gsettings", "get", "org.gnome.desktop.lockdown", "disable-lock-screen"], text=True).strip() == "true", "the passwordless developer profile must not offer manual locking"
             # Check functioning desktop services, not just emulated device names.
             wait(lambda: subprocess.run(["wpctl", "inspect", "@DEFAULT_AUDIO_SINK@"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0, "working PipeWire default output")
             network = subprocess.check_output(["nmcli", "-t", "device", "status"], text=True)

@@ -17,6 +17,11 @@ from rxipc import Client
 
 
 class DesktopIntegration(unittest.TestCase):
+    def test_passwordless_developer_profile_disables_manual_and_idle_lock(self):
+        recipe = (ROOT / "build/provision.sh").read_text(encoding="utf-8")
+        self.assertIn("[org/gnome/desktop/lockdown]\ndisable-lock-screen=true", recipe)
+        self.assertIn("[org/gnome/desktop/screensaver]\nlock-enabled=false", recipe)
+
     def test_sandbox_shares_only_the_accessibility_bus_and_not_session_dbus(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary); manager = AppManager(root / "state")

@@ -34,9 +34,27 @@ Do not redistribute private builder keys or assume this development image is a
 production-hardened distribution. Review support bundles before sharing them.
 
 This QEMU development guest autologins the `rx` account without a configured
-login password. Automatic idle locking is disabled to avoid an un-unlockable
-session. The image builder/root console must run `passwd rx` to configure the
-initial password before enabling screen locking; the Users panel alone cannot
+login password. Automatic idle locking and manual screen locking are disabled
+to avoid an un-unlockable session. The development image's authenticated root
+SSH connection must run `passwd rx` to configure the initial password before
+enabling screen locking; the Users panel alone cannot
 authenticate a locked, passwordless account. Do not treat autologin as suitable
 physical-device authentication. This developer guest is not a multi-user
 installation or a production account-provisioning flow.
+
+With the developer VM running through `python tools/rx-vm.py --vnc`, use a
+second host terminal to configure the password interactively:
+
+```sh
+ssh -t -i out/desktop/builder-key -p 2225 root@127.0.0.1 passwd rx
+```
+
+Then, in the guest's RX Console as `rx`, explicitly enable manual locking:
+
+```sh
+gsettings set org.gnome.desktop.lockdown disable-lock-screen false
+```
+
+Configure automatic idle/lock timing through System Settings if desired. The
+ordinary Windows launcher intentionally has no SSH port forwarding; the
+developer VM helper is a separate workflow. Never publish its private key.

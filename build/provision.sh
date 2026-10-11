@@ -99,6 +99,8 @@ clock-show-weekday=true
 toolkit-accessibility=true
 [org/gnome/desktop/screensaver]
 lock-enabled=false
+[org/gnome/desktop/lockdown]
+disable-lock-screen=true
 [org/gnome/desktop/session]
 idle-delay=uint32 0
 [org/gnome/desktop/wm/preferences]
