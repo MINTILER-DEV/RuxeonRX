@@ -91,6 +91,10 @@ def open_picker(filename):
     chooser = wait(lambda: window("Open"), "real GTK file picker")
     xdo("windowactivate", "--sync", chooser)
     xdo("key", "--clearmodifiers", "ctrl+l"); xdo("type", "--clearmodifiers", str(filename)); xdo("key", "Return")
+    # GTK 4's location entry first selects the file and closes the entry;
+    # the dialog's Open response needs a separate confirmation.
+    time.sleep(0.5)
+    if window("Open"): xdo("key", "--clearmodifiers", "Return")
 
 
 def class_window(name):
