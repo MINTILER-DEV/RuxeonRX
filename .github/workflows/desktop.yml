@@ -3,7 +3,7 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   desktop:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y qemu-system-x86 qemu-utils xorriso openssh-client

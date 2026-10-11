@@ -68,6 +68,8 @@ toolkit-accessibility=true
 lock-enabled=false
 [org/gnome/desktop/session]
 idle-delay=uint32 0
+[org/gnome/desktop/wm/preferences]
+button-layout='appmenu:minimize,maximize,close'
 [org/gnome/shell]
 enabled-extensions=['dash-to-panel@jderose9.github.com']
 favorite-apps=['org.ruxeonrx.Apps.desktop','org.gnome.Nautilus.desktop','org.gnome.Console.desktop','firefox-esr.desktop','org.ruxeonrx.Settings.desktop','org.ruxeonrx.Recovery.desktop']
