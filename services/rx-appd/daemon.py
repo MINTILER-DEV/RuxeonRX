@@ -43,7 +43,7 @@ class DesktopService:
             if active(): sync_desktop(self.manager)
             pending_settings = state / "settings-apply-pending"
             if not pending_settings.exists(): reconcile_settings(self.settings)
-            apply_settings(self.settings.all())
+            else: apply_settings(self.settings.all())
             pending_settings.unlink(missing_ok=True)
 
     def reap(self):

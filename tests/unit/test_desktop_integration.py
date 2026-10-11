@@ -103,7 +103,7 @@ class DesktopIntegration(unittest.TestCase):
     def test_native_pins_use_the_original_identity_without_duplicate_wrappers(self):
         with patch("system_integration.active", return_value=True), patch("system_integration.read_favorites", return_value=["org.gnome.Nautilus.desktop", "other.desktop"]), patch("system_integration.subprocess.run") as run:
             sync_favorites([{"id": "org.test.files", "desktop_id": "org.gnome.Nautilus.desktop", "pinned": True}])
-            self.assertNotIn("ruxeonrx-org.test.files", run.call_args.args[0][-1])
+            run.assert_not_called()  # No redundant write for an existing pin.
             sync_favorites([{"id": "org.test.files", "desktop_id": "org.gnome.Nautilus.desktop", "pinned": False}])
             self.assertEqual("['other.desktop']", run.call_args.args[0][-1])
 
@@ -120,7 +120,7 @@ class DesktopIntegration(unittest.TestCase):
                 reconcile_favorites(manager)
                 self.assertFalse(manager.registry.get(app["id"])["pinned"])
                 sync_favorites(manager.registry.list())
-                self.assertEqual("[]", run.call_args.args[0][-1])
+                run.assert_not_called()  # Native unpin already removed the entry.
 
     def test_native_launch_intent_is_argument_not_shell_code(self):
         with tempfile.TemporaryDirectory() as temporary:

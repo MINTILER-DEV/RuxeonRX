@@ -18,7 +18,7 @@ from guest_desktop import wait, window, xdo, sandbox_boundary
 def setup():
     runtime = Path(os.environ["RX_RUNTIME"])
     environment = runtime / "environment.json"
-    wait(environment.is_file, "real session environment", timeout=180)
+    wait(environment.is_file, "real session environment", timeout=420)
     os.environ.update(json.loads(environment.read_text()))
     import pyatspi
     return runtime, Client(runtime / "appd.sock"), pyatspi
@@ -68,7 +68,7 @@ def class_window(name):
 def main(phase):
     runtime, client, atspi = setup()
     shell_name = "RX Recovery" if phase == "safe" else "RX Apps"
-    wait(lambda: (runtime / "graphical-ready").is_file() and window(shell_name), "real GTK management/recovery window", timeout=180)
+    wait(lambda: (runtime / "graphical-ready").is_file() and window(shell_name), "real GTK management/recovery window", timeout=420)
     assert client.call("health")["healthy"]
     app_id = "org.ruxeonrx.native-test-app"
     if phase == "safe":

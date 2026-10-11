@@ -6,6 +6,7 @@ import shutil
 import subprocess
 
 CORE_FAVORITES = ["org.ruxeonrx.Apps.desktop", "org.gnome.Nautilus.desktop", "org.gnome.Console.desktop", "firefox-esr.desktop", "org.ruxeonrx.Settings.desktop", "org.ruxeonrx.Recovery.desktop"]
+GSETTINGS_TIMEOUT = 20
 SETTING_MAP = {
     "appearance.text_scale": ("org.gnome.desktop.interface", "text-scaling-factor"),
     "appearance.high_contrast": ("org.gnome.desktop.a11y.interface", "high-contrast"),
@@ -25,7 +26,7 @@ def apply_settings(settings):
         value = settings[setting]
         if setting == "input.focus_follows_mouse": value = "sloppy" if value else "click"
         rendered = str(value).lower() if isinstance(value, bool) else str(value) if isinstance(value, (int, float)) else repr(value)
-        result = subprocess.run(["gsettings", "set", schema, key, rendered], capture_output=True, text=True, timeout=5)
+        result = subprocess.run(["gsettings", "set", schema, key, rendered], capture_output=True, text=True, timeout=GSETTINGS_TIMEOUT)
         if result.returncode: print("RX_SETTINGS_WARNING=" + result.stderr.strip(), flush=True)
 
 
@@ -34,7 +35,7 @@ def reconcile_settings(settings):
     if not active(): return settings.all()
     stored = settings.all()
     for setting, (schema, key) in SETTING_MAP.items():
-        rendered = subprocess.check_output(["gsettings", "get", schema, key], text=True, timeout=5).strip()
+        rendered = subprocess.check_output(["gsettings", "get", schema, key], text=True, timeout=GSETTINGS_TIMEOUT).strip()
         if setting == "input.focus_follows_mouse": value = ast.literal_eval(rendered) in ("mouse", "sloppy")
         elif isinstance(stored[setting], bool):
             if rendered not in ("true", "false"): raise ValueError("invalid native boolean preference")
@@ -48,7 +49,7 @@ def reconcile_settings(settings):
 
 
 def read_favorites():
-    rendered = subprocess.check_output(["gsettings", "get", "org.gnome.shell", "favorite-apps"], text=True, timeout=5).strip()
+    rendered = subprocess.check_output(["gsettings", "get", "org.gnome.shell", "favorite-apps"], text=True, timeout=GSETTINGS_TIMEOUT).strip()
     value = ast.literal_eval(rendered.removeprefix("@as "))
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError("invalid desktop favorites")
@@ -81,7 +82,8 @@ def sync_favorites(records):
     favorites = [item for item in current if not (item.startswith("ruxeonrx-") or item in managed) or item in pinned]
     for item in pinned:
         if item not in favorites: favorites.append(item)
-    subprocess.run(["gsettings", "set", "org.gnome.shell", "favorite-apps", repr(favorites)], check=True, timeout=5)
+    if favorites != current:
+        subprocess.run(["gsettings", "set", "org.gnome.shell", "favorite-apps", repr(favorites)], check=True, timeout=GSETTINGS_TIMEOUT)
 
 
 def import_core_apps(manager):
