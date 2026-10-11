@@ -24,7 +24,7 @@ logs = []
 if not (state / "safe-mode").exists():
     os.environ["XDG_CURRENT_DESKTOP"] = "GNOME"
     subprocess.run(["dbus-update-activation-environment", "--systemd", "DISPLAY", "XAUTHORITY", "XDG_CURRENT_DESKTOP"], check=False)
-    raise SystemExit(subprocess.call(["gnome-session", "--session=gnome", "--builtin"]))
+    raise SystemExit(subprocess.call(["gnome-session", "--session=gnome"]))
 try:
     subprocess.run(["xsetroot", "-solid", "#15243b"], check=False)
     with (log_dir / "openbox.log").open("ab") as log:
