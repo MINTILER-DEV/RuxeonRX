@@ -87,6 +87,9 @@ class Desktop(Adw.Application):
     def show(self, page):
         if self.window is None:
             self.window = Adw.ApplicationWindow(application=self, title="RX Apps", default_width=1040, default_height=700)
+            # Keep the permission broker alive and allow taskbar launchers to
+            # reopen the same application after the management window closes.
+            self.window.connect("close-request", lambda window: (window.set_visible(False), True)[1])
             toolbar = Adw.ToolbarView(); self.toast = Adw.ToastOverlay(); self.toast.set_child(toolbar); self.window.set_content(self.toast)
             header = Adw.HeaderBar(); header.set_title_widget(Adw.WindowTitle(title="RuxeonRX", subtitle="1.0 · Native desktop beta"))
             header.pack_end(self.button("System settings", lambda: self.system_settings()))
