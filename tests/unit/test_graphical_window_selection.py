@@ -18,6 +18,19 @@ beta_spec.loader.exec_module(beta)
 
 
 class GraphicalWindowSelection(unittest.TestCase):
+    def test_picker_exits_active_search_before_separating_location_and_selection_keys(self):
+        search = Mock(); search.getRoleName.return_value = "toggle button"
+        search.getState.return_value.contains.return_value = True
+        search.queryAction.return_value.doAction.return_value = True
+        def wait_actual(predicate, description):
+            while True:
+                result = predicate()
+                if result: return result
+        with patch.object(beta, "wait", side_effect=wait_actual), patch.object(beta, "window", side_effect=["501", "501", None]), patch.object(beta, "control", return_value=search), patch.object(beta, "xdo") as xdo, patch.object(beta.time, "sleep"), patch("builtins.print"):
+            beta.open_picker(Path("/home/rx/document.txt"), SimpleNamespace(STATE_PRESSED=1, STATE_CHECKED=2))
+        search.queryAction.return_value.doAction.assert_called_once_with(0)
+        xdo.assert_has_calls([call("windowactivate", "--sync", "501"), call("key", "--clearmodifiers", "ctrl+l"), call("key", "--clearmodifiers", "ctrl+a"), call("type", "--clearmodifiers", str(Path("/home/rx/document.txt"))), call("key", "Return"), call("key", "--clearmodifiers", "alt+o")])
+
     def test_nested_adwaita_controls_are_not_cut_off_at_eighteen_levels(self):
         leaf = SimpleNamespace(name="Restore")
         tree = [leaf]
