@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Command interface shared by the RX 0.3 shell, App Manager, and tests."""
+"""Command interface shared by the native desktop, App Manager, and tests."""
 from __future__ import annotations
 
 import argparse
@@ -28,7 +28,7 @@ def output(value: object) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="RuxeonRX RX 0.5 alpha control")
+    parser = argparse.ArgumentParser(description="RuxeonRX 1.0 native desktop beta control")
     parser.add_argument("--state", type=Path, default=Path.home() / ".local/state/ruxeonrx")
     actions = parser.add_subparsers(dest="action", required=True)
     install = actions.add_parser("install"); install.add_argument("manifest", type=Path)

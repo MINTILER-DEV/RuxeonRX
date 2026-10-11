@@ -238,7 +238,7 @@ class DesktopService:
             for name, pid in services.items():
                 try: os.kill(pid, 0); alive[name] = True
                 except (ProcessLookupError, PermissionError): alive[name] = False
-            return {"healthy": all(alive.values()), "mode": "safe" if (self.state / "safe-mode").exists() else "normal", "pid": os.getpid(), "services": alive, "apps_running": [name for name, proc in self.processes.items() if proc.poll() is None]}
+            return {"healthy": all(alive.values()), "mode": self.mode, "next_login_mode": "safe" if (self.state / "safe-mode").exists() else "normal", "pid": os.getpid(), "services": alive, "apps_running": [name for name, proc in self.processes.items() if proc.poll() is None]}
         raise ValueError("unknown method: " + method)
 
 

@@ -1,9 +1,10 @@
-# Native app SDK (RX 0.5)
+# Native app SDK (RX 1.0 beta)
 
 The public contracts are [the manifest schema](spec/app-manifest.schema.json),
 [IPC version 1](spec/ipc-v1.md), and the synchronous Python
-[client](bindings/python/rxipc.py). See [RX Notes](samples/desktop_app.py) for
-a runnable GUI using asynchronous Tk polling around the portal client.
+[client](bindings/python/rxipc.py). See [RX Notes](samples/gtk_notes.py) for
+a runnable GTK 4/libadwaita GUI using GLib polling around the portal client.
+The older Tk sample is retained as a legacy fixture, not the 1.0 desktop.
 
 ## Package an app
 
@@ -45,7 +46,7 @@ completed result is consumed once. Display errors and denials to the user.
 Regular native packages may explicitly set `sandbox` to false and use the
 same portal API. Imported `.desktop` applications are visibly unrestricted:
 they retain ordinary Linux user access, irrespective of the portal preferences.
-Read [the alpha security limitations](../docs/security/threat-model.md),
+Read [the beta security limitations](../docs/security/threat-model.md),
 especially the X11 display trust boundary.
 
 ## Publish a trusted source

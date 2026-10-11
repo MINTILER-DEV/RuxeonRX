@@ -48,7 +48,7 @@ try:
                 if name == "rx-shell" and not (runtime / "appd.sock").exists(): continue
                 log = (log_dir / (name + ".log")).open("ab"); logs.append(log)
                 children[name] = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
-        (state / "session.json").write_text(json.dumps({"mode": "safe" if (state / "safe-mode").exists() else "normal", "crash_count": crashes, "services": {name: "running" if child.poll() is None else "failed" for name, child in children.items()}, "pids": {name: child.pid for name, child in children.items()}}))
+        (state / "session.json").write_text(json.dumps({"mode": "safe", "next_login_mode": "safe" if (state / "safe-mode").exists() else "normal", "crash_count": crashes, "services": {name: "running" if child.poll() is None else "failed" for name, child in children.items()}, "pids": {name: child.pid for name, child in children.items()}}))
         time.sleep(1)
 finally:
     for child in children.values():

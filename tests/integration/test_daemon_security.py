@@ -14,6 +14,22 @@ from rxipc import Client
 
 @unittest.skipIf(os.name == "nt", "AF_UNIX service acceptance runs on Linux")
 class DaemonTest(unittest.TestCase):
+    def test_requested_login_mode_does_not_mislabel_the_live_service(self):
+        sys.path.insert(0, str(ROOT / "services/rx-appd"))
+        from daemon import DesktopService
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); state = root / "state"
+            normal = DesktopService(state, root / "run")
+            (state / "safe-mode").touch()
+            health = normal.dispatch("health", {})
+            self.assertEqual("normal", health["mode"])
+            self.assertEqual("safe", health["next_login_mode"])
+            recovery = DesktopService(state, root / "run")
+            (state / "safe-mode").unlink()
+            health = recovery.dispatch("health", {})
+            self.assertEqual("safe", health["mode"])
+            self.assertEqual("normal", health["next_login_mode"])
+
     def test_file_and_protocol_intents_are_scoped_and_require_file_consent(self):
         sys.path.insert(0, str(ROOT / "services/rx-appd"))
         from daemon import DesktopService
