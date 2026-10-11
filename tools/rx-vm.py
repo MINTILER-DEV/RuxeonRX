@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -48,6 +49,16 @@ def main():
     if overlay.exists(): parser.error("acceptance overlay exists; archive it before rerunning")
     subprocess.run(["qemu-img", "create", "-f", "qcow2", "-F", "qcow2", "-b", str(disk), str(overlay)], check=True)
     report = {"passed": False, "completed": [], "disk": str(disk), "disk_sha256": hashlib.file_digest(disk.open("rb"), "sha256").hexdigest(), "acceleration": args.accel}
+    # Freeze acceptance source once, separately from the immutable OS image.
+    # Deploy it only to the disposable overlay, never to the user's base disk.
+    test_stage = tempfile.TemporaryDirectory(prefix="rx-e2e-", dir=out)
+    test_paths = []
+    report["test_revision"] = subprocess.check_output(["git", "-C", str(ROOT), "rev-parse", "HEAD"], text=True).strip()
+    report["test_sha256"] = {}
+    for filename in ("guest_beta.py", "guest_desktop.py"):
+        content = (ROOT / "tests/e2e" / filename).read_bytes()
+        staged = Path(test_stage.name) / filename; staged.write_bytes(content); test_paths.append(str(staged))
+        report["test_sha256"][filename] = hashlib.sha256(content).hexdigest()
     report_path = out / "acceptance.json"
     report_path.write_text(json.dumps(report, indent=2))
     key = out / "builder-key"
@@ -59,6 +70,7 @@ def main():
             try:
                 ssh = image.wait_ssh(key, args.port, vm)
                 report["guest_build"] = json.loads(subprocess.check_output(ssh + ["cat /etc/ruxeonrx/build.json"], text=True))
+                subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), *test_paths, "root@127.0.0.1:/opt/RuxeonRX/tests/e2e/"], check=True)
                 uid = subprocess.check_output(ssh + ["id -u rx"], text=True).strip()
                 guest = f"runuser -u rx -- env DISPLAY=:0 XAUTHORITY=/home/rx/.Xauthority XDG_RUNTIME_DIR=/run/user/{uid} RX_RUNTIME=/run/user/{uid}/ruxeonrx python3 /opt/RuxeonRX/tests/e2e/guest_beta.py --phase {phase}"
                 acceptance = subprocess.run(ssh + [guest])
@@ -75,12 +87,14 @@ def main():
             except Exception as error:
                 report.update(failed_phase=phase, error=str(error))
                 report_path.write_text(json.dumps(report, indent=2))
+                test_stage.cleanup()
                 raise
             finally:
                 if vm.poll() is None: vm.terminate(); vm.wait(timeout=15)
         report["completed"].append(phase)
         report_path.write_text(json.dumps(report, indent=2))
     report["passed"] = True
+    test_stage.cleanup()
     report_path.write_text(json.dumps(report, indent=2))
     print("RX 1.0 GNOME/taskbar/native desktop and recovery acceptance passed")
 
