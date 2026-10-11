@@ -83,6 +83,7 @@ def main(phase):
         if phase == "initial":
             sandbox_boundary(client)
             assert len([app for app in client.call("apps") if app.get("unrestricted")]) >= 4
+            assert client.call("defaults")["inode/directory"] == "org.ruxeonrx.import.org.gnome.nautilus"
             shell = window("RX Apps"); xdo("windowactivate", "--sync", shell); xdo("key", "ctrl+i")
             wait(lambda: client.call("apps", query="RX Notes"), "native package installed through GTK UI")
             xdo("key", "ctrl+f"); xdo("type", "no-such-app"); time.sleep(1); xdo("key", "ctrl+l")

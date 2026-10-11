@@ -67,7 +67,12 @@ def import_core_apps(manager):
     for filename in ("org.gnome.Nautilus.desktop", "org.gnome.Console.desktop", "org.gnome.TextEditor.desktop", "firefox-esr.desktop"):
         path = Path("/usr/share/applications") / filename
         if path.is_file():
+            defaults = manager.associations.defaults()
             record = manager.import_desktop(path)
+            # Adding the trusted base suite must not replace an existing user
+            # default or make Terminal the default directory handler.
+            for handler, app_id in defaults.items():
+                manager.associations.set_default(handler, app_id)
             record["source"] = "Debian base (trusted)"
             manager.registry.replace(record)
     marker.touch()
