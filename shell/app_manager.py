@@ -89,6 +89,13 @@ class AppManager:
             authority = env.get("XAUTHORITY", str(Path.home() / ".Xauthority"))
             if Path(authority).is_file():
                 prefix += ["--ro-bind", authority, authority, "--setenv", "XAUTHORITY", authority]
+            # Expose only the desktop accessibility socket, not the unrestricted
+            # session bus. GTK's AT-SPI backend needs this for screen readers and
+            # real accessible controls inside the filesystem sandbox.
+            accessibility = Path(os.environ.get("XDG_RUNTIME_DIR", "/nonexistent")) / "at-spi/bus_0"
+            if accessibility.is_socket():
+                prefix += ["--ro-bind", str(accessibility), str(accessibility), "--setenv", "AT_SPI_BUS_ADDRESS", "unix:path=" + str(accessibility)]
+            prefix += ["--unsetenv", "DBUS_SESSION_BUS_ADDRESS"]
             command = prefix + command
         log_dir = self.log_root / app_id
         log_dir.mkdir(parents=True, exist_ok=True)

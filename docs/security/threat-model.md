@@ -19,6 +19,9 @@ observe input and interact with other windows. RX 1.0 does not claim clipboard,
 camera, microphone or screen-capture isolation. Unsupported permission controls
 are explicitly disabled. Network changes require a sandboxed app restart;
 file consent mediates brokered reads, not unrestricted system applications.
+The dedicated AT-SPI accessibility socket is also shared so assistive technology
+can operate sandboxed GTK controls. It is a desktop interaction surface, not
+an isolation boundary. The unrestricted session D-Bus socket is not shared.
 GNOME settings control trusted base services; native imports run with full user
 access. Android, Wine/Windows and VM-backed app runtimes belong to later roadmap
 milestones and are not advertised as available in this release.
