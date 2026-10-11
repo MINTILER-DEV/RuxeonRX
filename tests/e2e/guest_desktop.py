@@ -2,6 +2,7 @@
 import argparse
 import json
 import os
+import re
 import signal
 from pathlib import Path
 import subprocess
@@ -25,7 +26,7 @@ def wait(predicate, description, timeout=90):
 
 
 def xdo(*args):
-    return subprocess.check_output(["xdotool", *args], text=True).strip()
+    return subprocess.check_output(["xdotool", *args], text=True, timeout=15).strip()
 
 
 def window(name):
@@ -35,8 +36,12 @@ def window(name):
 
 def click_app(window_id, offset):
     xdo("windowactivate", "--sync", window_id)
-    geometry = dict(line.split("=", 1) for line in xdo("getwindowgeometry", "--shell", window_id).splitlines() if "=" in line)
-    xdo("mousemove", str(int(geometry["X"]) + offset), str(int(geometry["Y"]) + 30))
+    # xdotool's geometry includes reparenting offsets twice under Openbox.
+    # Use X11's absolute client origin, not the window-manager frame origin.
+    geometry = subprocess.check_output(["xwininfo", "-id", window_id], text=True, timeout=15)
+    origin_x = int(re.search(r"Absolute upper-left X:\s*(-?\d+)", geometry).group(1))
+    origin_y = int(re.search(r"Absolute upper-left Y:\s*(-?\d+)", geometry).group(1))
+    xdo("mousemove", str(origin_x + offset), str(origin_y + 30))
     xdo("click", "1")
 
 
