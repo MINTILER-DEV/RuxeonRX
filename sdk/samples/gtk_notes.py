@@ -1,5 +1,6 @@
 """Native GTK 4 Notes: scoped file/notification portals and private saved notes."""
 import os
+import concurrent.futures
 from pathlib import Path
 import sys
 import gi
@@ -13,7 +14,8 @@ class Notes(Adw.Application):
     def __init__(self):
         super().__init__(application_id=os.environ["RX_APP_ID"], flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.client = Client(Path(os.environ["RX_PORTAL_DIR"]) / "portal.sock")
-        self.token = os.environ["RX_TOKEN"]; self.seen = set()
+        self.token = os.environ["RX_TOKEN"]; self.seen = set(); self.pending = set(); self.poll_busy = False
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self.connect("activate", self.activate)
 
     def activate(self, application):
@@ -28,14 +30,22 @@ class Notes(Adw.Application):
         content.append(self.status); toolbar.set_content(content); self.window.set_content(toolbar)
         saved = Path(os.environ["RX_DATA_DIR"]) / "note.txt"
         if saved.is_file(): self.text.get_buffer().set_text(saved.read_text(encoding="utf-8"))
-        self.apply_appearance()
+        self.call("appearance", self.render_appearance, token=self.token)
         self.window.present(); GLib.timeout_add(500, self.intents)
 
-    def apply_appearance(self):
-        try:
-            scheme = self.client.call("appearance", token=self.token)["color_scheme"]
-            self.get_style_manager().set_color_scheme({"prefer-dark": Adw.ColorScheme.FORCE_DARK, "prefer-light": Adw.ColorScheme.FORCE_LIGHT}.get(scheme, Adw.ColorScheme.DEFAULT))
-        except Exception as error: self.status.set_label(str(error))
+    def render_appearance(self, values):
+        scheme = values["color_scheme"]
+        self.get_style_manager().set_color_scheme({"prefer-dark": Adw.ColorScheme.FORCE_DARK, "prefer-light": Adw.ColorScheme.FORCE_LIGHT}.get(scheme, Adw.ColorScheme.DEFAULT))
+
+    def call(self, method, callback, **params):
+        future = self.executor.submit(self.client.call, method, **params)
+        def finished(result):
+            def deliver():
+                try: callback(result.result())
+                except Exception as error: self.status.set_label(str(error))
+                return False
+            GLib.idle_add(deliver)
+        future.add_done_callback(finished)
 
     def save(self):
         buffer = self.text.get_buffer()
@@ -45,27 +55,40 @@ class Notes(Adw.Application):
         self.status.set_label("Saved to private app storage. Reset app data erases this note.")
 
     def request(self, capability):
-        try: self.wait(self.client.call("request", token=self.token, capability=capability))
-        except Exception as error: self.status.set_label(str(error))
+        self.call("request", self.wait, token=self.token, capability=capability)
 
     def wait(self, identifier):
+        self.pending.add(identifier)
         self.status.set_label("Waiting for your decision in the RuxeonRX permission dialog…")
-        def poll():
-            try: answer = self.client.call("result", token=self.token, request_id=identifier)
-            except Exception as error: self.status.set_label(str(error)); return False
-            if answer.get("pending"): return True
-            self.status.set_label(answer.get("message", "Completed"))
-            if "content" in answer: self.text.get_buffer().set_text(answer["content"])
-            return False
-        GLib.timeout_add(200, poll)
 
     def intents(self):
-        self.apply_appearance()
-        try:
-            for intent in self.client.call("intents", token=self.token):
-                if intent["id"] not in self.seen: self.seen.add(intent["id"]); self.wait(intent["id"])
-        except Exception as error: self.status.set_label(str(error))
+        if self.poll_busy: return True
+        self.poll_busy = True; pending = list(self.pending)
+        def fetch():
+            appearance = self.client.call("appearance", token=self.token)
+            intents = self.client.call("intents", token=self.token)
+            answers = [(identifier, self.client.call("result", token=self.token, request_id=identifier)) for identifier in pending]
+            return appearance, intents, answers
+        future = self.executor.submit(fetch)
+        def finished(result):
+            def deliver():
+                self.poll_busy = False
+                try:
+                    appearance, intents, answers = result.result(); self.render_appearance(appearance)
+                    for intent in intents:
+                        if intent["id"] not in self.seen: self.seen.add(intent["id"]); self.wait(intent["id"])
+                    for identifier, answer in answers:
+                        if not answer.get("pending"):
+                            self.pending.discard(identifier); self.status.set_label(answer.get("message", "Completed"))
+                            if "content" in answer: self.text.get_buffer().set_text(answer["content"])
+                except Exception as error: self.status.set_label(str(error))
+                return False
+            GLib.idle_add(deliver)
+        future.add_done_callback(finished)
         return True
 
 
-raise SystemExit(Notes().run(sys.argv))
+application = Notes()
+try: result = application.run(sys.argv)
+finally: application.executor.shutdown(wait=False, cancel_futures=True)
+raise SystemExit(result)
