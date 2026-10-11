@@ -30,7 +30,8 @@ def apply_settings(settings):
 
 
 def read_favorites():
-    value = ast.literal_eval(subprocess.check_output(["gsettings", "get", "org.gnome.shell", "favorite-apps"], text=True, timeout=5))
+    rendered = subprocess.check_output(["gsettings", "get", "org.gnome.shell", "favorite-apps"], text=True, timeout=5).strip()
+    value = ast.literal_eval(rendered.removeprefix("@as "))
     if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
         raise ValueError("invalid desktop favorites")
     return value

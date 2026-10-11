@@ -22,6 +22,12 @@ selection happen in the desktop controller, never in the app endpoint.
 `intents` returns request IDs for desktop file/link-open actions addressed to
 this app. Use `result` to consume each completed response exactly once.
 Controller `launch` accepts an optional `path`; `open-with` takes `handler`
-and optional `path`. Local files and file URIs still require consent and file
+and optional `path`. For sandboxed RX packages, local files and file URIs require consent and file
 selection. Declared protocol URIs are delivered as text intents, not executed
-as commands. The RX Notes sample implements all three app methods.
+as commands. The GTK 4 RX Notes sample implements all three app methods and
+persists documents under its private `RX_APP_DATA` directory. Trusted native
+desktop imports receive file/link intents as an argv argument, never a shell
+command; they are unrestricted and do not pretend to require RX file mediation.
+Notification records include a unique `id`, so identical repeated messages are
+separate events. The Python controller client has a 60-second timeout to allow
+hardware diagnostics to complete; UI calls execute off the GTK main thread.
