@@ -1,4 +1,5 @@
 import json
+import io
 import os
 from pathlib import Path
 import sys
@@ -7,14 +8,27 @@ import unittest
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(ROOT / "shell"), str(ROOT / "services/rx-settingsd")]
+sys.path[:0] = [str(ROOT / "shell"), str(ROOT / "services/rx-settingsd"), str(ROOT / "sdk/bindings/python")]
 from system_integration import apply_settings, sync_favorites, reconcile_favorites
 from rx_settingsd import Settings
 from app_manager import AppManager
 from rx_notificationd import NotificationCenter
+from rxipc import Client
 
 
 class DesktopIntegration(unittest.TestCase):
+    def test_unicode_file_responses_fit_the_bounded_client_reply(self):
+        document = "😀" * (1024 * 1024 // 4)
+        encoded = (json.dumps({"ok": True, "result": {"content": document}}) + "\n").encode()
+        self.assertGreater(len(encoded), 2 * 1024 * 1024)
+        with patch("rxipc.socket.socket") as factory:
+            connection = factory.return_value.__enter__.return_value
+            connection.makefile.return_value.__enter__.return_value = io.BytesIO(encoded)
+            self.assertEqual(document, Client("test.sock").call("result")["content"])
+        with patch("rxipc.socket.socket") as factory:
+            factory.return_value.__enter__.return_value.makefile.return_value.__enter__.return_value = io.BytesIO(b'{}')
+            with self.assertRaises(RuntimeError): Client("test.sock").call("result")
+
     def test_repeated_notifications_have_distinct_events_and_denial_posts_nothing(self):
         with tempfile.TemporaryDirectory() as temporary:
             center = NotificationCenter(Path(temporary))

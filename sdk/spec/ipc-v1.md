@@ -4,6 +4,9 @@ The desktop controller connects to `$RX_RUNTIME/appd.sock`, mode 0600.
 Applications connect only to `$RX_PORTAL_DIR/portal.sock` and present the random
 `RX_TOKEN` provided at launch. Both use one JSON line request/response per Unix
 socket connection, UTF-8, at most 1 MiB request size.
+Responses are limited to 8 MiB: JSON escaping can expand a brokered 1 MiB
+Unicode file beyond the previous 2 MiB reader limit. Incomplete or oversized
+responses are rejected explicitly.
 
 Request: `{"version":1,"method":"apps","params":{"query":"notes"}}`.
 Success: `{"ok":true,"result":[]}`. Failure:
