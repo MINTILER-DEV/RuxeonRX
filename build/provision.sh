@@ -29,7 +29,7 @@ autologin-user=rx
 autologin-user-timeout=0
 user-session=ruxeonrx
 EOF
-chmod +x /opt/RuxeonRX/tools/rxctl /opt/RuxeonRX/tools/rx-session
+chmod +x /opt/RuxeonRX/tools/rxctl /opt/RuxeonRX/tools/rx-session /opt/RuxeonRX/tools/rx-services
 printf 'rx ALL=(root) NOPASSWD: /sbin/poweroff, /sbin/reboot\n' > /etc/sudoers.d/ruxeonrx-power
 chmod 0440 /etc/sudoers.d/ruxeonrx-power
 python3 /opt/RuxeonRX/tools/rx-package.py

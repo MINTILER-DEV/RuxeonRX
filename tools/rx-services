@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""GNOME-autostart supervisor; real IPC/app processes, bounded restart budgets."""
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import sys
+import time
+
+ROOT = Path(__file__).resolve().parents[1]
+state = Path.home() / ".local/state/ruxeonrx"
+runtime = Path(os.environ["XDG_RUNTIME_DIR"]) / "ruxeonrx"
+state.mkdir(parents=True, exist_ok=True, mode=0o700)
+runtime.mkdir(parents=True, exist_ok=True, mode=0o700)
+os.environ.update(RX_STATE=str(state), RX_RUNTIME=str(runtime))
+(runtime / "graphical-ready").unlink(missing_ok=True)
+logs = state / "session-logs"; logs.mkdir(exist_ok=True)
+commands = {
+    "rx-appd": [sys.executable, str(ROOT / "services/rx-appd/daemon.py"), "--state", str(state), "--runtime", str(runtime)],
+    "rx-shell": [sys.executable, str(ROOT / "shell/modern.py"), "--page", "apps"],
+}
+children = {}; handles = []; crashes = 0; stopping = False
+def stop(*unused):
+    global stopping
+    stopping = True
+signal.signal(signal.SIGTERM, stop); signal.signal(signal.SIGINT, stop)
+try:
+    while not stopping:
+        for name, command in commands.items():
+            child = children.get(name)
+            if child is None or child.poll() is not None:
+                if child is not None:
+                    crashes += 1
+                    if crashes >= 3: (state / "safe-mode").touch()
+                    if crashes >= 6: raise RuntimeError("RX service restart budget exhausted; use safe mode")
+                if name == "rx-shell" and not (runtime / "appd.sock").exists(): continue
+                handle = (logs / (name + ".log")).open("ab"); handles.append(handle)
+                children[name] = subprocess.Popen(command, stdout=handle, stderr=subprocess.STDOUT)
+        session = {"mode": "safe" if (state / "safe-mode").exists() else "normal", "desktop": "GNOME", "crash_count": crashes,
+                   "pids": {name: child.pid for name, child in children.items()},
+                   "services": {name: "running" if child.poll() is None else "failed" for name, child in children.items()}}
+        temporary = state / "session.tmp"; temporary.write_text(json.dumps(session)); temporary.replace(state / "session.json")
+        time.sleep(1)
+finally:
+    for child in children.values():
+        if child.poll() is None: child.terminate()
+    for child in children.values():
+        try: child.wait(timeout=5)
+        except subprocess.TimeoutExpired: child.kill(); child.wait()
+    for handle in handles: handle.close()

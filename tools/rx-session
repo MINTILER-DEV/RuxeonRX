@@ -19,12 +19,16 @@ log_dir.mkdir(exist_ok=True)
 crashes = 0
 children = {}
 logs = []
+if not (state / "safe-mode").exists():
+    os.environ["XDG_CURRENT_DESKTOP"] = "GNOME"
+    subprocess.run(["dbus-update-activation-environment", "--systemd", "DISPLAY", "XAUTHORITY", "XDG_CURRENT_DESKTOP"], check=False)
+    raise SystemExit(subprocess.call(["gnome-session", "--session=gnome", "--builtin"]))
 try:
     subprocess.run(["xsetroot", "-solid", "#15243b"], check=False)
     with (log_dir / "openbox.log").open("ab") as log:
         wm = subprocess.Popen(["openbox"], stdout=log, stderr=subprocess.STDOUT)
     children["openbox"] = wm
-    commands = {"rx-appd": [sys.executable, str(ROOT / "services/rx-appd/daemon.py"), "--state", str(state), "--runtime", str(runtime)], "rx-shell": [sys.executable, str(ROOT / "shell/desktop.py")]}
+    commands = {"rx-appd": [sys.executable, str(ROOT / "services/rx-appd/daemon.py"), "--state", str(state), "--runtime", str(runtime)], "rx-shell": [sys.executable, str(ROOT / "shell/modern.py"), "--page", "recovery"]}
     while True:
         if children["openbox"].poll() is not None:
             crashes += 1
