@@ -187,6 +187,11 @@ def main(phase):
             xdo("windowactivate", "--sync", notes)
             click(atspi, "Send notification"); consent(atspi, True)
             wait(lambda: len(client.call("notifications")) >= 2, "permission broker remains usable while the management window is hidden")
+            # A modal permission prompt may present its management parent.
+            # Close that real window again before exercising taskbar reopening.
+            if window("RX Apps"):
+                xdo("windowactivate", "--sync", window("RX Apps")); xdo("key", "alt+F4")
+                wait(lambda: not window("RX Apps"), "permission parent closed before launcher reactivation")
             click(atspi, "RX Apps", app="gnome-shell")
             shell = wait(lambda: window("RX Apps"), "management application reopened through its taskbar launcher")
             xdo("windowactivate", "--sync", shell); xdo("key", "ctrl+d")
@@ -201,6 +206,10 @@ def main(phase):
             client.call("set", key="appearance.high_contrast", value=True)
             assert "1.25" in subprocess.check_output(["gsettings", "get", "org.gnome.desktop.interface", "text-scaling-factor"], text=True)
             client.call("snapshot", name="acceptance-good"); client.call("bundle", path=str(Path.home() / "support-beta.zip"))
+            # Update/rollback/repair stop the old process by design. Exercise
+            # the repaired executable instead of activating its destroyed XID.
+            client.call("launch", app_id=app_id)
+            notes = wait(lambda: window("RX Notes"), "repaired native app relaunched")
             xdo("windowactivate", "--sync", shell); xdo("key", "F5"); xdo("windowactivate", "--sync", notes)
         else:
             app = client.call("inspect", app_id=app_id)
