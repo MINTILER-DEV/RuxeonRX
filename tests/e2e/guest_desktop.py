@@ -32,7 +32,19 @@ def xdo(*args):
 
 def window(name):
     answer = subprocess.run(["xdotool", "search", "--onlyvisible", "--name", "^" + name + "$"], capture_output=True, text=True)
-    return answer.stdout.strip().splitlines()[0] if answer.returncode == 0 else None
+    return managed_window(answer.stdout) if answer.returncode == 0 else None
+
+
+def managed_window(identifiers):
+    # GTK's mapped application-leader window can share the actual title/class.
+    # It is not a WM-managed user window and remains mapped after minimization.
+    for identifier in identifiers.split():
+        try:
+            state = subprocess.check_output(["xprop", "-id", identifier, "WM_STATE", "_NET_WM_STATE"], text=True, timeout=5)
+            if "window state: Normal" in state and "_NET_WM_STATE_HIDDEN" not in state:
+                return identifier
+        except subprocess.SubprocessError: pass
+    return None
 
 
 def click_app(window_id, offset):

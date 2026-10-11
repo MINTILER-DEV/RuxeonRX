@@ -12,7 +12,7 @@ import time
 ROOT = Path("/opt/RuxeonRX")
 sys.path[:0] = [str(ROOT / "sdk/bindings/python"), str(ROOT / "tests/e2e")]
 from rxipc import Client
-from guest_desktop import wait, window, xdo, sandbox_boundary
+from guest_desktop import wait, window, xdo, sandbox_boundary, managed_window
 
 
 def setup():
@@ -108,7 +108,7 @@ def open_picker(filename, atspi):
 
 def class_window(name):
     result = subprocess.run(["xdotool", "search", "--onlyvisible", "--class", name], capture_output=True, text=True)
-    return result.stdout.strip().splitlines()[0] if result.returncode == 0 else None
+    return managed_window(result.stdout) if result.returncode == 0 else None
 
 
 def main(phase):
