@@ -21,11 +21,11 @@ class DesktopIntegration(unittest.TestCase):
         document = "😀" * (1024 * 1024 // 4)
         encoded = (json.dumps({"ok": True, "result": {"content": document}}) + "\n").encode()
         self.assertGreater(len(encoded), 2 * 1024 * 1024)
-        with patch("rxipc.socket.socket") as factory:
+        with patch("rxipc.socket.AF_UNIX", 1, create=True), patch("rxipc.socket.socket") as factory:
             connection = factory.return_value.__enter__.return_value
             connection.makefile.return_value.__enter__.return_value = io.BytesIO(encoded)
             self.assertEqual(document, Client("test.sock").call("result")["content"])
-        with patch("rxipc.socket.socket") as factory:
+        with patch("rxipc.socket.AF_UNIX", 1, create=True), patch("rxipc.socket.socket") as factory:
             factory.return_value.__enter__.return_value.makefile.return_value.__enter__.return_value = io.BytesIO(b'{}')
             with self.assertRaises(RuntimeError): Client("test.sock").call("result")
 
