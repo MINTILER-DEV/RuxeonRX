@@ -94,10 +94,16 @@ def open_picker(filename, atspi):
     chooser = wait(lambda: window("Open"), "real GTK file picker")
     xdo("windowactivate", "--sync", chooser)
     xdo("key", "--clearmodifiers", "ctrl+l"); xdo("type", "--clearmodifiers", str(filename)); xdo("key", "Return")
-    # Wait for actual selection, not a fixed delay while the chooser is loading.
-    # A second Enter during location processing can cancel the dialog.
-    wait(lambda: control(atspi, filename.name, app="*", prefix=True), "selected file visible in the real chooser")
-    click(atspi, "Open", app="*")
+    # Use GTK's actual _Open mnemonic once selection is ready, not a second
+    # Enter (which can cancel while location processing is pending). The next
+    # assertions verify the exact granted path and delivered file contents.
+    def accept():
+        current = window("Open")
+        if not current: return True
+        xdo("windowactivate", "--sync", current)
+        xdo("key", "--clearmodifiers", "alt+o")
+        return not window("Open")
+    wait(accept, "actual file chooser Open response")
 
 
 def class_window(name):
