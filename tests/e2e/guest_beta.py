@@ -102,11 +102,20 @@ def open_picker(filename, atspi):
         current = window("Open")
         if not current: return True
         xdo("windowactivate", "--sync", current)
+        # GNOME's Nautilus chooser keeps search above its location bar; Ctrl+L
+        # alone cannot escape a raced type-to-search operation. Toggle the
+        # actual search control off if active, also supporting GTK's fallback.
+        search = control(atspi, "Search Current Folder", app="*") or control(atspi, "Search", app="*")
+        if search and search.getRoleName() == "toggle button" and any(search.getState().contains(state) for state in (atspi.STATE_PRESSED, atspi.STATE_CHECKED)):
+            assert search.queryAction().doAction(0)
+            print("REAL_GTK_ACTION=Exit chooser search", flush=True)
+            time.sleep(1)
         # A mapped native chooser can still be initializing its shortcuts.
         # Retry real location navigation rather than leaving a raced path in
         # the chooser's type-to-search field until the acceptance times out.
-        xdo("key", "--clearmodifiers", "ctrl+l", "ctrl+a")
+        xdo("key", "--clearmodifiers", "ctrl+l")
         time.sleep(1)
+        xdo("key", "--clearmodifiers", "ctrl+a")
         xdo("type", "--clearmodifiers", str(filename)); xdo("key", "Return")
         time.sleep(2)
         xdo("key", "--clearmodifiers", "alt+o")
