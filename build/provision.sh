@@ -57,12 +57,15 @@ picture-options='zoom'
 [org/gnome/desktop/interface]
 color-scheme='prefer-dark'
 clock-show-weekday=true
+toolkit-accessibility=true
 [org/gnome/shell]
 enabled-extensions=['dash-to-panel@jderose9.github.com']
 favorite-apps=['org.ruxeonrx.Apps.desktop','org.gnome.Nautilus.desktop','org.gnome.Console.desktop','firefox-esr.desktop','org.ruxeonrx.Settings.desktop','org.ruxeonrx.Recovery.desktop']
 [org/gnome/shell/extensions/dash-to-panel]
 panel-position='BOTTOM'
 panel-size=52
+panel-positions='{"0":"BOTTOM"}'
+panel-sizes='{"0":52}'
 intellihide=false
 show-apps-icon=true
 show-favorites=true
