@@ -17,6 +17,14 @@ install -d -m 0700 -o rx -g rx /home/rx/.local /home/rx/.local/state /home/rx/.l
 if [[ ! -f /home/rx/.config/openbox/menu.xml ]]; then
     install -m 0600 -o rx -g rx /opt/RuxeonRX/build/desktop-menu.xml /home/rx/.config/openbox/menu.xml
 fi
+python3 - <<'PY'
+from pathlib import Path
+path = Path('/home/rx/.config/openbox/menu.xml')
+old = 'xdotool search --name "^RuxeonRX Desktop$" windowmap windowactivate'
+content = path.read_text()
+if old in content:
+    path.write_text(content.replace(old, 'python3 /opt/RuxeonRX/shell/modern.py --page recovery'))
+PY
 install -d /usr/share/xsessions /etc/lightdm/lightdm.conf.d /etc/ruxeonrx
 cat > /usr/share/xsessions/ruxeonrx.desktop <<EOF
 [Desktop Entry]
