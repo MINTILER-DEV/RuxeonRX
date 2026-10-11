@@ -80,7 +80,8 @@ user.chmod(0o600)
 PY
 if systemctl cat lightdm.service >/dev/null 2>&1; then systemctl disable lightdm.service; fi
 printf '/usr/sbin/gdm3\n' > /etc/X11/default-display-manager
-systemctl enable gdm.service
+# Debian's GDM unit is static: graphical.target wants this explicit alias.
+ln -sfn /usr/lib/systemd/system/gdm.service /etc/systemd/system/display-manager.service
 printf '[Service]\nExecStartPre=/usr/bin/python3 /opt/RuxeonRX/tools/rx-boot.py\n' > /etc/systemd/system/gdm.service.d/ruxeonrx.conf
 systemctl daemon-reload
 install -d /etc/xdg/autostart /etc/dconf/profile /etc/dconf/db/local.d /usr/share/backgrounds/ruxeonrx
