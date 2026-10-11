@@ -16,8 +16,9 @@ Controller methods: apps, install, update, repair, rollback, inspect, import,
 remove, launch, pin, reset-data, decide, pending, answer, settings, set, notifications, devices,
 defaults, default, open-with, sources, source, catalog, source-install, updates, snapshot,
 snapshots, restore, bundle, health. The app endpoint supports only request,
-intents and
-result; tokens are bound to installed apps and revoked when the process exits.
+intents, appearance and result; tokens are bound to installed apps and revoked
+when the process exits. `appearance` exposes only the public `color_scheme`
+preference; it cannot read private settings or authorize capabilities.
 `request` declares files/notifications and returns a request ID. `result` returns
 pending status or the user-approved result. Permission decisions and file-picker
 selection happen in the desktop controller, never in the app endpoint.
@@ -27,7 +28,7 @@ this app. Use `result` to consume each completed response exactly once.
 Controller `launch` accepts an optional `path`; `open-with` takes `handler`
 and optional `path`. For sandboxed RX packages, local files and file URIs require consent and file
 selection. Declared protocol URIs are delivered as text intents, not executed
-as commands. The GTK 4 RX Notes sample implements all three app methods and
+as commands. The GTK 4 RX Notes sample implements all four app methods and
 persists documents under its private `RX_DATA_DIR` directory. Trusted native
 desktop imports receive file/link intents as an argv argument, never a shell
 command; they are unrestricted and do not pretend to require RX file mediation.

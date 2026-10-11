@@ -81,6 +81,9 @@ class DesktopService:
         app_id = self.tokens.get(params.get("token"))
         if not app_id or self.manager.registry.get(app_id) is None:
             raise PermissionError("invalid application token")
+        if method == "appearance":
+            values = self.settings.all()
+            return {"color_scheme": values["appearance.color_scheme"]}
         if method == "request":
             capability = params["capability"]
             app = self.manager.registry.get(app_id)
@@ -99,7 +102,7 @@ class DesktopService:
             return request
         if method == "intents":
             return [{"id": item["id"]} for item in self.requests.values() if item["app_id"] == app_id and item.get("origin") == "open-with"]
-        raise PermissionError("portal endpoint only accepts request/result")
+        raise PermissionError("portal endpoint only accepts request/result/intents/appearance")
 
     def dispatch(self, method, p):
         m = self.manager

@@ -28,7 +28,14 @@ class Notes(Adw.Application):
         content.append(self.status); toolbar.set_content(content); self.window.set_content(toolbar)
         saved = Path(os.environ["RX_DATA_DIR"]) / "note.txt"
         if saved.is_file(): self.text.get_buffer().set_text(saved.read_text(encoding="utf-8"))
+        self.apply_appearance()
         self.window.present(); GLib.timeout_add(500, self.intents)
+
+    def apply_appearance(self):
+        try:
+            scheme = self.client.call("appearance", token=self.token)["color_scheme"]
+            self.get_style_manager().set_color_scheme({"prefer-dark": Adw.ColorScheme.FORCE_DARK, "prefer-light": Adw.ColorScheme.FORCE_LIGHT}.get(scheme, Adw.ColorScheme.DEFAULT))
+        except Exception as error: self.status.set_label(str(error))
 
     def save(self):
         buffer = self.text.get_buffer()
@@ -53,6 +60,7 @@ class Notes(Adw.Application):
         GLib.timeout_add(200, poll)
 
     def intents(self):
+        self.apply_appearance()
         try:
             for intent in self.client.call("intents", token=self.token):
                 if intent["id"] not in self.seen: self.seen.add(intent["id"]); self.wait(intent["id"])

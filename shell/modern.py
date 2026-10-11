@@ -34,6 +34,9 @@ class Desktop(Adw.Application):
 
     def do_startup(self):
         Adw.Application.do_startup(self)
+        self.appearance = Gio.Settings.new("org.gnome.desktop.interface")
+        self.appearance.connect("changed::color-scheme", lambda unused, key: self.apply_color_scheme())
+        self.apply_color_scheme()
         self.hold()
         self.set_accels_for_action("app.refresh", ["F5"])
         self.set_accels_for_action("app.search", ["<Control>f"])
@@ -43,6 +46,10 @@ class Desktop(Adw.Application):
         for name, callback in (("refresh", self.refresh), ("search", self.focus_search), ("launch", lambda: self.operation("launch")), ("sample", self.install_sample), ("logs", self.view_logs)):
             action = Gio.SimpleAction.new(name, None); action.connect("activate", lambda action, parameter, cb=callback: cb()); self.add_action(action)
         GLib.timeout_add(750, self.poll)
+
+    def apply_color_scheme(self):
+        scheme = self.appearance.get_string("color-scheme")
+        self.get_style_manager().set_color_scheme({"prefer-dark": Adw.ColorScheme.FORCE_DARK, "prefer-light": Adw.ColorScheme.FORCE_LIGHT}.get(scheme, Adw.ColorScheme.DEFAULT))
 
     def command_line(self, app, command):
         arguments = command.get_arguments()
