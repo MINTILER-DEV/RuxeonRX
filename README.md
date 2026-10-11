@@ -1,7 +1,7 @@
 # RuxeonRX
 
 RuxeonRX is a Linux desktop operating system project. RX 1.0 targets a native
-x86_64 QEMU native desktop beta; later releases add web, Android and Windows runtimes.
+x86_64 QEMU desktop beta; later releases add web, Android and Windows runtimes.
 
 The desktop disk contains a pinned Debian 13 base, Linux kernel, systemd,
 GDM login, GNOME window management, a persistent bottom taskbar, modern GTK RX apps, and the app,
@@ -37,8 +37,9 @@ Read [the complete build/run guide](docs/development/desktop-beta.md),
 [the native desktop beta scope](docs/releases/rx-1.0.md),
 [the support matrix](docs/development/test-matrix.md), and
 [the security model](docs/security/threat-model.md).
-The [2026-10-10 verification record](docs/releases/verification-2026-10-10.md)
-lists executed checks, the local Windows disk checksum and remaining release gates.
+The [1.0 verification record](docs/releases/verification-rx-1.0.md)
+lists executed checks and remaining release gates. The earlier
+[0.5 verification record](docs/releases/verification-2026-10-10.md) is historical.
 
 Desktop acceptance requires real windows and permission interaction, then
 reboots the guest and verifies persistence. Logs and screenshots stay in
