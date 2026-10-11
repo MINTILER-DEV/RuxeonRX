@@ -23,11 +23,13 @@ class DesktopIntegration(unittest.TestCase):
             desktop = root / "sample.desktop"
             desktop.write_text('[Desktop Entry]\nType=Application\nName=Test\nExec=true\n')
             app = manager.import_desktop(desktop)
-            with patch.dict(os.environ, {"XDG_RUNTIME_DIR": "/run/user/1000", "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus"}), patch("app_manager.shutil.which", return_value="/usr/bin/bwrap"), patch("app_manager.Path.is_socket", return_value=True), patch("app_manager.subprocess.Popen") as popen:
+            app["package"] = {"root": str(root / "package")}
+            accessibility = str(Path("/run/user/1000") / "at-spi/bus_0")
+            with patch.object(manager.registry, "get", return_value=app), patch.object(manager, "launch", return_value=["true"]), patch.dict(os.environ, {"XDG_RUNTIME_DIR": "/run/user/1000", "DBUS_SESSION_BUS_ADDRESS": "unix:path=/run/user/1000/bus"}), patch("app_manager.shutil.which", return_value="/usr/bin/bwrap"), patch("app_manager.Path.is_socket", return_value=True), patch("app_manager.subprocess.Popen") as popen:
                 manager.execute(app["id"], sandbox=True, environment={"RX_PORTAL_DIR": str(root / "portal")})
                 command = popen.call_args.args[0]
-                self.assertIn("/run/user/1000/at-spi/bus_0", command)
-                self.assertIn("unix:path=/run/user/1000/at-spi/bus_0", command)
+                self.assertIn(accessibility, command)
+                self.assertIn("unix:path=" + accessibility, command)
                 self.assertNotIn("/run/user/1000/bus", command)
                 self.assertEqual("DBUS_SESSION_BUS_ADDRESS", command[command.index("--unsetenv") + 1])
                 self.assertIn("--unshare-net", command)
