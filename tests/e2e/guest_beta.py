@@ -251,7 +251,7 @@ def main(phase):
                 wait(lambda: json.loads(session.read_text())["pids"][service] != old_pid and client.call("health")["healthy"] and window("RX Apps"), "real " + service + " crash recovery", timeout=180)
             for filename in ("apps.json", "apps.backup", "settings.json", "sources.json"):
                 (session.parent / filename).write_text("{simulated interrupted write")
-    subprocess.run(["scrot", "--overwrite", str(Path.home() / "desktop-acceptance.png")], check=True)
+    subprocess.run(["scrot", "--delay", "2", "--overwrite", str(Path.home() / "desktop-acceptance.png")], check=True)
     print(json.dumps({"phase": phase, "passed": True, "real_graphics": True, "desktop": "GNOME" if phase != "safe" else "minimal-recovery"}), flush=True)
 
 
