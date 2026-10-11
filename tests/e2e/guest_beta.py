@@ -37,7 +37,8 @@ def control(atspi, name, app=None, prefix=False):
         app = "org.ruxeonrx.native-test-app" if name in ("Send notification", "Open file…", "Save locally") or name.startswith("Opened ") else "modern.py"
     for application in atspi.Registry.getDesktop(0):
         if app and app != "*" and application.name != app: continue
-        for node in descendants(application):
+        roots = [child for child in application if child and child.name == "Open"] if app == "*" else [application]
+        for node in (node for root in roots for node in descendants(root)):
             try:
                 if (node.name == name or prefix and node.name.startswith(name)) and node.getState().contains(atspi.STATE_SHOWING): return node
             except Exception: pass
