@@ -62,6 +62,13 @@ class DesktopIntegration(unittest.TestCase):
             self.assertIn("ruxeonrx-org.test.new.desktop", argument)
             self.assertNotIn("org.test.old", argument)
 
+    def test_native_pins_use_the_original_identity_without_duplicate_wrappers(self):
+        with patch("system_integration.active", return_value=True), patch("system_integration.read_favorites", return_value=["org.gnome.Nautilus.desktop", "other.desktop"]), patch("system_integration.subprocess.run") as run:
+            sync_favorites([{"id": "org.test.files", "desktop_id": "org.gnome.Nautilus.desktop", "pinned": True}])
+            self.assertNotIn("ruxeonrx-org.test.files", run.call_args.args[0][-1])
+            sync_favorites([{"id": "org.test.files", "desktop_id": "org.gnome.Nautilus.desktop", "pinned": False}])
+            self.assertEqual("['other.desktop']", run.call_args.args[0][-1])
+
     def test_taskbar_pin_changes_are_imported_without_repinning_core_apps(self):
         with tempfile.TemporaryDirectory() as temporary:
             manager = AppManager(Path(temporary) / "state")

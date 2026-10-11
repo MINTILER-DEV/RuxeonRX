@@ -37,12 +37,16 @@ def read_favorites():
     return value
 
 
+def favorite_id(app):
+    return app.get("desktop_id") or "ruxeonrx-" + app["id"] + ".desktop"
+
+
 def reconcile_favorites(manager):
     """Import taskbar pin/unpin actions before returning the app list."""
     if not active(): return
     favorites = read_favorites()
     for app in manager.registry.list():
-        pinned = "ruxeonrx-" + app["id"] + ".desktop" in favorites
+        pinned = favorite_id(app) in favorites
         if bool(app.get("pinned")) != pinned:
             app["pinned"] = pinned
             manager.registry.replace(app)
@@ -50,12 +54,13 @@ def reconcile_favorites(manager):
 
 def sync_favorites(records):
     if not active(): return
-    pinned = ["ruxeonrx-" + app["id"] + ".desktop" for app in records if app.get("pinned")]
+    pinned = [favorite_id(app) for app in records if app.get("pinned")]
+    managed = {favorite_id(app) for app in records}
     # GNOME's own user pins are preserved; remove only managed entries no longer pinned.
     try:
         current = read_favorites()
     except (ValueError, SyntaxError, subprocess.SubprocessError): current = CORE_FAVORITES
-    favorites = [item for item in current if not item.startswith("ruxeonrx-") or item in pinned]
+    favorites = [item for item in current if not (item.startswith("ruxeonrx-") or item in managed) or item in pinned]
     for item in pinned:
         if item not in favorites: favorites.append(item)
     subprocess.run(["gsettings", "set", "org.gnome.shell", "favorite-apps", repr(favorites)], check=True, timeout=5)
@@ -74,5 +79,7 @@ def import_core_apps(manager):
             for handler, app_id in defaults.items():
                 manager.associations.set_default(handler, app_id)
             record["source"] = "Debian base (trusted)"
+            record["desktop_id"] = filename
+            record["pinned"] = filename in read_favorites()
             manager.registry.replace(record)
     marker.touch()

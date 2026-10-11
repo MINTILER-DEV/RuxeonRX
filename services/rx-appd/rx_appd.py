@@ -66,6 +66,8 @@ class AppRegistry:
         for field in ("desktop_icon", "startup_wm_class"):
             if field in manifest and (not isinstance(manifest[field], str) or any(character in manifest[field] for character in ("\x00", "\r", "\n"))):
                 raise ValueError(f"invalid {field}")
+        if "desktop_id" in manifest and (not isinstance(manifest["desktop_id"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*\.desktop", manifest["desktop_id"])):
+            raise ValueError("invalid desktop_id")
         if manifest["runtime_kind"] not in RUNTIMES:
             raise ValueError("unknown runtime kind")
         if manifest["package_kind"] not in {"deb", "portable", "desktop-entry", "test"}:
