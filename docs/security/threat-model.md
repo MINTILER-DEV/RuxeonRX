@@ -32,5 +32,8 @@ production-hardened distribution. Review support bundles before sharing them.
 
 This QEMU development guest autologins the `rx` account without a configured
 login password. Automatic idle locking is disabled to avoid an un-unlockable
-session. Configure a password in System Settings > Users before enabling screen
-locking, and do not treat autologin as suitable physical-device authentication.
+session. The image builder/root console must run `passwd rx` to configure the
+initial password before enabling screen locking; the Users panel alone cannot
+authenticate a locked, passwordless account. Do not treat autologin as suitable
+physical-device authentication. This developer guest is not a multi-user
+installation or a production account-provisioning flow.
