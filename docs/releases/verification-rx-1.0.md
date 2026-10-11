@@ -2,22 +2,25 @@
 
 ## Status
 
-Graphical acceptance is in progress. This record does not certify a completed
-1.0 release until both host runs have passed initial, resume and safe phases.
+Windows graphical acceptance passed all three phases: initial, resume and safe.
+Linux graphical acceptance is being repeated after a chooser automation failure;
+it is not certified complete until its clean-overlay report passes all phases.
 The previous 0.5 verification is not evidence for the new GNOME desktop.
 
 ## Executed source checks
 
-Source revision `09fbaebd883b0c7d0277d725c2938ecdb9967e8f`:
+Source revision `f0a50e5b` (2026-10-11):
 
-- Linux: 22 unit tests and 15 integration tests passed, no skips.
-- Windows: 22 unit tests and 10 integration tests passed; five Unix-only tests
+- Linux: 29 unit tests and 16 integration tests passed, no skips.
+- Windows: 29 unit tests and 10 integration tests passed; six Unix-only tests
   were explicitly skipped, not counted as Windows passes.
-- Windows Python compilation of build/services/shell/SDK/tests/tools passed.
+- Windows and Linux Python compilation of build/services/shell/SDK/tests/tools passed.
 
-Subsequent commits correct and preserve graphical acceptance tooling only;
-the OS runtime under test remains the revision above. Each `acceptance.json`
-records its separate test revision and SHA-256 hashes of the deployed scripts.
+The runtime includes managed-process retirement and obsolete portal-token
+revocation after update, repair and rollback. Later commits correct acceptance
+tooling and add regression tests; the image revisions below contain equivalent
+runtime code. Each `acceptance.json` records the independent test revision and
+SHA-256 hashes of the scripts frozen and deployed into its disposable overlay.
 
 ## Images under test
 
@@ -27,27 +30,45 @@ two virtual CPUs, standard VGA, VirtIO storage and user-mode NAT.
 
 | Host | Base disk SHA-256 |
 | --- | --- |
-| Linux QEMU 8.2.2 | `e48cd0b0db279d05806a3b08421fa8f5354b2a04df63142a7cc6a8108fae63a4` |
-| Windows QEMU 11.1.1 | `22960ce6d586529ec6c9e06a3ff05853bef1fe2c05ddd4f72ce9641237c00094` |
+| Linux QEMU 8.2.2 | `ca271b3302e027eb8dd560aa5e71033c1152760abd64a0b020503714ac07d8ed` |
+| Windows QEMU 11.1.1 | `5997ddb2ac07dee78db83b5d90aecf63c3c67347fd5833055bd47cce7d3a534c` |
 
 Different hashes are expected: these are independently refreshed development
-disks, not byte-identical exports. Runtime revision is identical. Generated
+disks, not byte-identical exports. Windows image revision is
+`e834c05680d0606e8da5cc34f32d3d170159eb6e`; Linux image revision is
+`77864264b2e649b724e2f07cd6b6231aa2170e92`. Differences after the Windows
+revision are acceptance scripts and regression fixtures, not runtime changes. Generated
 disks, logs, screenshots and private builder keys remain ignored under
 `out/desktop/`; never publish the private key with an image.
 
 ## Observations and remaining checks
 
-Observed: GDM autologin, rendered dark RX Apps and bottom taskbar; focused
-Windows checks activated the real Notes and permission widgets, denied and
-approved notification permission, delivered a notification, opened a real GTK
-file picker, delivered selected file contents, and saved a private note.
+Windows clean-overlay report has `passed: true` and completed
+`initial`, `resume`, `safe`, using test revision
+`8c23c66a993c6d564f84d2471acbf987ea8563c6`. It exercised GDM autologin,
+the bottom taskbar, actual native Notes/Files/Console/Text Editor/Firefox/Settings
+windows, minimize/restore and closed-window taskbar reopening, hidden permission
+brokering, notification/file denial and approval, the actual file picker and
+private saved notes. It also verified update/rollback/repair and stopped-old-app
+relaunch, pins, 1.25 text scaling/high contrast, snapshots, support export,
+reboot/persistence/removal, supervised service restart and corrupt-state safe
+recovery through real GTK Restore/Continue controls.
 
-Full clean-overlay acceptance remains required for both hosts: actual taskbar
-launch/minimize/restore, all native windows, package update/rollback/repair,
-persisted settings/private data, reboot/removal, service restart supervision,
-and corrupt-state safe recovery. Reports must have `passed: true` and all three
-completed phases. Cold software-rendered GNOME initialization takes several
-minutes; readiness markers alone do not establish a usable desktop.
+Linux focused checks additionally opened the expected file and recovered from
+chooser search input, verifying the exact grant; these do not substitute for its
+pending full clean-overlay run. Both hosts retain `acceptance.json`,
+`default-desktop.png`, per-phase `*-acceptance.log`, `*-guest.log`,
+`*-serial.log`, `*-qemu.log` and `*-desktop.png` in ignored `out/desktop/`.
+Earlier failed runs are archived without overwriting their reports or disks.
+Every successful acceptance phase requires actual guest poweroff, not forced
+termination. Cold software-rendered GNOME initialization takes several minutes;
+readiness markers alone do not establish a usable desktop.
+
+Windows screenshots were inspected: the default desktop renders modern dark
+RX Apps and the bottom taskbar; the updated native Notes shows the opened
+document with scaled/high-contrast controls; the recovery screenshot shows the
+named snapshot and completed restore. The resume screenshot shows the desktop
+and taskbar, not additional visual proof of app-window contents.
 
 Physical GPU/network/audio/Bluetooth/printer/firmware support, Wayland,
 UEFI/KVM/WHPX, interactive host sound playback, configured-password lock/unlock,
