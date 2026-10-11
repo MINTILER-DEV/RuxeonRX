@@ -15,7 +15,7 @@ image = importlib.util.module_from_spec(spec); spec.loader.exec_module(image)
 
 
 def command(args, disk, log):
-    result = ["qemu-system-x86_64", "-accel", args.accel, "-m", "2048", "-smp", "2", "-drive", f"file={disk},format=qcow2,if=virtio", "-vga", "std", "-nic", f"user,hostfwd=tcp:127.0.0.1:{args.port}-:22", "-serial", f"file:{log}", "-monitor", "none"]
+    result = ["qemu-system-x86_64", "-accel", args.accel, "-m", "3072", "-smp", "2", "-drive", f"file={disk},format=qcow2,if=virtio", "-vga", "std", "-device", "ich9-intel-hda", "-device", "hda-duplex", "-audiodev", "none,id=audio0", "-nic", f"user,hostfwd=tcp:127.0.0.1:{args.port}-:22", "-serial", f"file:{log}", "-monitor", "none"]
     if args.test: result += ["-display", "none"]
     elif args.vnc: result += ["-display", "none", "-vnc", "127.0.0.1:1"]
     else: result += ["-display", "gtk"]
@@ -26,7 +26,7 @@ def command(args, disk, log):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--disk", type=Path, default=ROOT / "out/desktop/ruxeonrx-0.5.qcow2")
+    parser.add_argument("--disk", type=Path, default=ROOT / "out/desktop/ruxeonrx-1.0.qcow2")
     parser.add_argument("--accel", choices=("tcg", "kvm", "whpx"), default="tcg")
     parser.add_argument("--port", type=int, default=2225)
     parser.add_argument("--test", action="store_true")

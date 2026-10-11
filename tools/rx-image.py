@@ -44,7 +44,7 @@ def build(args):
         urllib.request.urlretrieve(lock["url"], base)
     if not args.code_only and hashlib.file_digest(base.open("rb"), "sha512").hexdigest() != lock["sha512"]:
         raise RuntimeError("base checksum mismatch")
-    disk = OUT / "ruxeonrx-0.5.qcow2"
+    disk = OUT / "ruxeonrx-1.0.qcow2"
     if args.code_only and (not args.refresh or not disk.exists()):
         raise ValueError("--code-only requires --refresh and an already-provisioned disk")
     if disk.exists() and not args.refresh:
@@ -92,7 +92,7 @@ def build(args):
             if process.poll() is None:
                 process.terminate()
                 process.wait(timeout=15)
-    manifest = {"version": "0.5.0-alpha", "revision": revision, "architecture": "x86_64", "base": lock,
+    manifest = {"version": "1.0.0-beta", "revision": revision, "architecture": "x86_64", "base": lock,
                 "disk_sha256": hashlib.file_digest(disk.open("rb"), "sha256").hexdigest()}
     (OUT / "artifact.json").write_text(json.dumps(manifest, indent=2) + "\n")
     print("Built " + str(disk), flush=True)

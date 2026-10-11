@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#0b1025"/><stop offset=".55" stop-color="#192750"/><stop offset="1" stop-color="#28365e"/></linearGradient><linearGradient id="wave" x2="1" y2="1"><stop stop-color="#7c83ff"/><stop offset="1" stop-color="#48d9bf"/></linearGradient></defs>
+<path fill="url(#bg)" d="M0 0h1920v1080H0z"/>
+<path d="M-200 940Q400 300 1020 760T2120 290" fill="none" stroke="url(#wave)" stroke-width="220" opacity=".12"/>
+<path d="M-200 965Q420 335 1040 800T2120 330" fill="none" stroke="url(#wave)" stroke-width="3" opacity=".5"/>
+<g fill="#e8edff" font-family="Cantarell, sans-serif"><text x="116" y="165" font-size="52" font-weight="700">RuxeonRX</text><text x="119" y="205" font-size="20" fill="#a4b6db">Your desktop. Your apps. Your choice.</text></g>
+</svg>
