@@ -104,15 +104,34 @@ class DesktopService:
             return [{"id": item["id"]} for item in self.requests.values() if item["app_id"] == app_id and item.get("origin") == "open-with"]
         raise PermissionError("portal endpoint only accepts request/result/intents/appearance")
 
+    def stop_app(self, app_id):
+        """Retire the old executable and its portal authority before relaunch."""
+        process = self.processes.pop(app_id, None)
+        if process and process.poll() is None:
+            process.terminate()
+            try: process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill(); process.wait(timeout=5)
+        self.tokens = {token: identifier for token, identifier in self.tokens.items() if identifier != app_id}
+        self.requests = {key: item for key, item in self.requests.items() if item["app_id"] != app_id}
+
     def dispatch(self, method, p):
         m = self.manager
         if self.mode == "normal" and method in ("apps", "install", "update", "repair", "rollback", "remove", "import", "pin", "source-install", "default", "snapshot"):
             reconcile_favorites(m)
         if method == "apps": return m.registry.list(p.get("query", ""))
         if method == "install": return m.install_manifest(Path(p["path"]))
-        if method == "update": return m.update(Path(p["path"]))
-        if method == "repair": return m.repair(p["app_id"])
-        if method == "rollback": return m.rollback(p["app_id"])
+        if method == "update":
+            result = m.update(Path(p["path"]))
+            self.stop_app(result["id"])
+            return result
+        if method == "repair":
+            self.stop_app(p["app_id"])
+            return m.repair(p["app_id"])
+        if method == "rollback":
+            result = m.rollback(p["app_id"])
+            self.stop_app(result["id"])
+            return result
         if method == "inspect": return m.inspect(p["app_id"])
         if method == "pin":
             app = m.registry.get(p["app_id"])
@@ -209,6 +228,7 @@ class DesktopService:
         if method == "catalog": return m.packages.catalog(p["name"])
         if method == "source-install":
             result = m.packages.from_source(p["name"], p["app_id"], update=p.get("update", False))
+            if p.get("update", False): self.stop_app(result["id"])
             m.associations.remove_app(result["id"])
             for capability in list(m.portal.decisions(result["id"])):
                 if capability not in result["requested_permissions"]: m.portal.decide(result["id"], capability, False)

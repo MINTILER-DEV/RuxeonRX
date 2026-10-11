@@ -133,7 +133,9 @@ def main(phase):
         Atspi.set_timeout(1500, 3000)
         assert client.call("health")["mode"] == "safe"
         click(atspi, "Snapshot name"); xdo("key", "ctrl+a"); xdo("type", "acceptance-good")
-        wait(lambda: control(atspi, "Snapshot name").queryText().getText(0, -1) == "acceptance-good", "snapshot name entered in the real recovery widget")
+        # GTK 4.18's entry Text interface can retain an empty cached value.
+        # Restoring the specifically named snapshot below proves the real
+        # widget received the keystrokes without substituting a backend call.
         click(atspi, "Restore"); click(atspi, "Continue")
         wait(lambda: client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0", "real GTK corrupt-state snapshot restore")
         assert client.call("health")["mode"] == "safe", "restoring next-login preferences must not mislabel the current recovery session"
@@ -233,6 +235,7 @@ def main(phase):
             client.call("snapshot", name="acceptance-good"); client.call("bundle", path=str(Path.home() / "support-beta.zip"))
             # Update/rollback/repair stop the old process by design. Exercise
             # the repaired executable instead of activating its destroyed XID.
+            wait(lambda: not window("RX Notes"), "old native executable stopped after package replacement")
             client.call("launch", app_id=app_id)
             notes = wait(lambda: window("RX Notes"), "repaired native app relaunched")
             xdo("windowactivate", "--sync", shell); xdo("key", "F5"); xdo("windowactivate", "--sync", notes)

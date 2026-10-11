@@ -15,6 +15,22 @@ from rxipc import Client
 
 @unittest.skipIf(os.name == "nt", "AF_UNIX service acceptance runs on Linux")
 class DaemonTest(unittest.TestCase):
+    def test_package_replacement_retires_process_and_portal_authority(self):
+        sys.path.insert(0, str(ROOT / "services/rx-appd"))
+        from daemon import DesktopService
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary); service = DesktopService(root / "state", root / "run")
+            app_id = "org.ruxeonrx.native-test-app"
+            service.dispatch("install", {"path": str(ROOT / "packages/catalog/rx-notes-0.1.0.rxpkg")})
+            for method, params in (("update", {"path": str(ROOT / "packages/catalog/rx-notes-0.2.0.rxpkg")}), ("repair", {"app_id": app_id}), ("rollback", {"app_id": app_id})):
+                process = Mock(); process.poll.return_value = None
+                service.processes[app_id] = process; service.tokens["obsolete"] = app_id
+                service.requests["pending"] = {"app_id": app_id, "pending": True}
+                service.dispatch(method, params)
+                process.terminate.assert_called_once(); process.wait.assert_called_once_with(timeout=5)
+                self.assertNotIn(app_id, service.processes)
+                self.assertNotIn("obsolete", service.tokens); self.assertNotIn("pending", service.requests)
+
     def test_app_appearance_is_token_scoped_and_exposes_only_the_public_color_scheme(self):
         sys.path.insert(0, str(ROOT / "services/rx-appd"))
         from daemon import DesktopService
