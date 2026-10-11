@@ -33,6 +33,8 @@ def descendants(node, depth=0):
 
 
 def control(atspi, name, app=None, prefix=False):
+    if app is None:
+        app = "org.ruxeonrx.native-test-app" if name in ("Send notification", "Open file…", "Save locally") or name.startswith("Opened ") else "modern.py"
     for application in atspi.Registry.getDesktop(0):
         if app and application.name != app: continue
         for node in descendants(application):
@@ -43,6 +45,19 @@ def control(atspi, name, app=None, prefix=False):
 
 def click(atspi, name, app=None):
     node = wait(lambda: control(atspi, name, app), "visible accessible control: " + name)
+    if app != "gnome-shell":
+        # Activate the real GTK accessible widget, not an IPC replacement for
+        # its behavior. CSD/transient animations can invalidate X11 coordinates
+        # between activation and a pointer click on slow software renderers.
+        if "Action" in node.getInterfaces():
+            action = node.queryAction()
+            assert action.nActions > 0 and action.doAction(0)
+            print("REAL_GTK_ACTION=" + name, flush=True)
+            return
+        if node.getRoleName() in ("text", "entry"):
+            assert node.queryComponent().grabFocus()
+            print("REAL_GTK_FOCUS=" + name, flush=True)
+            return
     if app == "gnome-shell":
         extents = node.queryComponent().getExtents(atspi.DESKTOP_COORDS)
         origin_x = origin_y = 0
