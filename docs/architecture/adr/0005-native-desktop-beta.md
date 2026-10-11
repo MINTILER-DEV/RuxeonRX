@@ -9,6 +9,9 @@ Use the pinned Debian 13 GNOME 48 desktop, its compositor/window management,
 and the packaged Dash to Panel extension for a permanent bottom taskbar with
 pinned apps, running windows, app grid, clock and system controls. RX apps use
 GTK 4/libadwaita and retain the existing versioned appd/portal contract.
+GDM owns graphical login and GNOME's lock-screen integration; the developer
+guest autologins until its owner configures a password. Recovery still uses
+the RX session's independent Openbox path, not a GNOME extension.
 The tested baseline remains an x86_64 QEMU Xorg session with software rendering;
 Wayland/physical GPU support requires separate acceptance, not an assumed claim.
 

@@ -4,7 +4,7 @@ RuxeonRX is a Linux desktop operating system project. RX 1.0 targets a native
 x86_64 QEMU native desktop beta; later releases add web, Android and Windows runtimes.
 
 The desktop disk contains a pinned Debian 13 base, Linux kernel, systemd,
-LightDM, GNOME window management, a persistent bottom taskbar, modern GTK RX apps, and the app,
+GDM login, GNOME window management, a persistent bottom taskbar, modern GTK RX apps, and the app,
 portal, notification, package, settings, recovery and diagnostic services.
 RX Notes is a real native application installed from an executable package.
 

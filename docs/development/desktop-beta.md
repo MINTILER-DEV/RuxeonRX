@@ -24,7 +24,10 @@ existing disk. `build --refresh` explicitly updates the development image;
 run it only when that VM is stopped. This preserves managed user state, but
 updates image-owned session configuration. `--refresh --code-only` skips APT
 and is valid only after a complete desktop dependency install. A changed base
-lock requires a full rebuild. Package versions, source revision and disk hash
+lock requires a new image build. An existing image can also receive a full
+dependency refresh on Windows using `python tools/rx-image.py --refresh`;
+refresh uses the original builder key and validated base manifest without
+regenerating Linux cloud-init media. Package versions, source revision and disk hash
 are recorded in `/etc/ruxeonrx/` and `out/desktop/artifact.json`.
 
 ## Run

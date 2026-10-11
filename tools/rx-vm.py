@@ -62,7 +62,7 @@ def main():
                 uid = subprocess.check_output(ssh + ["id -u rx"], text=True).strip()
                 guest = f"runuser -u rx -- env DISPLAY=:0 XAUTHORITY=/home/rx/.Xauthority XDG_RUNTIME_DIR=/run/user/{uid} RX_RUNTIME=/run/user/{uid}/ruxeonrx python3 /opt/RuxeonRX/tests/e2e/guest_beta.py --phase {phase}"
                 acceptance = subprocess.run(ssh + [guest])
-                diagnostics = subprocess.run(ssh + ["journalctl -b -u lightdm --no-pager -n 120; journalctl -b _UID=1000 --no-pager -n 200; tail -n 100 /home/rx/.xsession-errors 2>/dev/null || true"], capture_output=True, text=True, timeout=60)
+                diagnostics = subprocess.run(ssh + ["journalctl -b -u gdm.service -u lightdm.service --no-pager -n 120; journalctl -b _UID=1000 --no-pager -n 200; tail -n 100 /home/rx/.xsession-errors 2>/dev/null || true"], capture_output=True, text=True, timeout=60)
                 (out / (phase + "-guest.log")).write_text(diagnostics.stdout + diagnostics.stderr, encoding="utf-8")
                 screenshot = subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), "root@127.0.0.1:/home/rx/desktop-acceptance.png", str(out / (phase + "-desktop.png"))])
                 if acceptance.returncode:

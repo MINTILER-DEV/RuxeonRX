@@ -8,10 +8,12 @@ deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/$snapshot 
 EOF
 rm -f /etc/apt/sources.list.d/debian.sources
 if [[ "${RX_SKIP_APT:-0}" != 1 ]]; then
+    printf 'gdm3 shared/default-x-display-manager select gdm3\n' | debconf-set-selections
     apt-get update
-    apt-get install -y --no-install-recommends dconf-cli dbus-user-session evolution-data-server ibus librsvg2-bin librsvg2-common
-    apt-get install -y --no-install-recommends linux-image-amd64 xserver-xorg xserver-xorg-video-all lightdm openbox python3 python3-tk python3-jsonschema python3-gi python3-pyatspi gir1.2-gtk-4.0 gir1.2-adw-1 bubblewrap dbus-x11 xterm fonts-dejavu-core fonts-cantarell xdotool scrot x11-utils x11-xserver-utils xinput e2fsprogs sudo gnome-session gnome-session-xsession gnome-shell gnome-shell-extension-dash-to-panel gnome-control-center gnome-console gnome-text-editor nautilus firefox-esr adwaita-icon-theme libgl1-mesa-dri mesa-utils pipewire-audio wireplumber network-manager network-manager-gnome bluez cups system-config-printer fwupd xdg-desktop-portal-gnome gnome-keyring libpam-gnome-keyring at-spi2-core
+    apt-get install -y --no-install-recommends dconf-cli dbus-user-session evolution-data-server ibus librsvg2-bin librsvg2-common rtkit upower wpasupplicant
+    apt-get install -y --no-install-recommends linux-image-amd64 xserver-xorg xserver-xorg-video-all gdm3 openbox python3 python3-tk python3-jsonschema python3-gi python3-pyatspi gir1.2-gtk-4.0 gir1.2-adw-1 bubblewrap dbus-x11 xterm fonts-dejavu-core fonts-cantarell xdotool scrot x11-utils x11-xserver-utils xinput e2fsprogs sudo gnome-session gnome-session-xsession gnome-shell gnome-shell-extension-dash-to-panel gnome-control-center gnome-console gnome-text-editor nautilus firefox-esr adwaita-icon-theme libgl1-mesa-dri mesa-utils pipewire-audio wireplumber network-manager network-manager-gnome bluez cups system-config-printer fwupd xdg-desktop-portal-gnome gnome-keyring libpam-gnome-keyring at-spi2-core
 fi
+if systemctl cat display-manager.service >/dev/null 2>&1; then systemctl stop display-manager.service; fi
 id rx >/dev/null 2>&1 || useradd -m -s /bin/bash rx
 install -d -m 0700 -o rx -g rx /home/rx/.local /home/rx/.local/state /home/rx/.local/share /home/rx/.local/share/applications /home/rx/.local/state/ruxeonrx /home/rx/.config /home/rx/.config/openbox
 if [[ ! -f /home/rx/.config/openbox/menu.xml ]]; then
@@ -31,6 +33,7 @@ cat > /usr/share/xsessions/ruxeonrx.desktop <<EOF
 Name=RuxeonRX
 Exec=env XDG_CURRENT_DESKTOP=GNOME /opt/RuxeonRX/tools/rx-session
 Type=Application
+DesktopNames=GNOME;
 EOF
 cat > /etc/lightdm/lightdm.conf.d/50-ruxeonrx.conf <<EOF
 [Seat:*]
@@ -56,9 +59,29 @@ install -m 0644 /opt/RuxeonRX/shell/assets/ruxeonrx.svg /usr/share/icons/hicolor
 printf 'GRUB_DISTRIBUTOR=RuxeonRX\n' > /etc/default/grub.d/99-ruxeonrx.cfg
 if command -v update-grub >/dev/null; then update-grub; fi
 systemctl set-default graphical.target
-systemctl enable lightdm
-install -d /etc/systemd/system/lightdm.service.d
-printf '[Service]\nExecStartPre=/usr/bin/python3 /opt/RuxeonRX/tools/rx-boot.py\n' > /etc/systemd/system/lightdm.service.d/ruxeonrx.conf
+install -d /etc/gdm3 /var/lib/AccountsService/users /etc/systemd/system/gdm.service.d
+python3 - <<'PY'
+import configparser
+from pathlib import Path
+path = Path('/etc/gdm3/daemon.conf')
+if not path.exists(): path = Path('/etc/gdm3/custom.conf')
+config = configparser.ConfigParser(); config.optionxform = str
+config.read(path)
+if not config.has_section('daemon'): config.add_section('daemon')
+config['daemon'].update(AutomaticLoginEnable='true', AutomaticLogin='rx', WaylandEnable='false')
+with path.open('w') as output: config.write(output)
+user = Path('/var/lib/AccountsService/users/rx')
+account = configparser.ConfigParser(); account.optionxform = str
+account.read(user)
+if not account.has_section('User'): account.add_section('User')
+account['User'].update(Session='ruxeonrx', SessionType='x11', XSession='ruxeonrx', SystemAccount='false')
+with user.open('w') as output: account.write(output)
+user.chmod(0o600)
+PY
+if systemctl cat lightdm.service >/dev/null 2>&1; then systemctl disable lightdm.service; fi
+printf '/usr/sbin/gdm3\n' > /etc/X11/default-display-manager
+systemctl enable gdm.service
+printf '[Service]\nExecStartPre=/usr/bin/python3 /opt/RuxeonRX/tools/rx-boot.py\n' > /etc/systemd/system/gdm.service.d/ruxeonrx.conf
 systemctl daemon-reload
 install -d /etc/xdg/autostart /etc/dconf/profile /etc/dconf/db/local.d /usr/share/backgrounds/ruxeonrx
 install -m 0644 /opt/RuxeonRX/shell/assets/wallpaper.svg /usr/share/backgrounds/ruxeonrx/wallpaper.svg
