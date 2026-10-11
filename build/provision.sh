@@ -9,7 +9,7 @@ EOF
 rm -f /etc/apt/sources.list.d/debian.sources
 if [[ "${RX_SKIP_APT:-0}" != 1 ]]; then
     apt-get update
-    apt-get install -y --no-install-recommends dconf-cli dbus-user-session
+    apt-get install -y --no-install-recommends dconf-cli dbus-user-session evolution-data-server ibus
     apt-get install -y --no-install-recommends linux-image-amd64 xserver-xorg xserver-xorg-video-all lightdm openbox python3 python3-tk python3-jsonschema python3-gi python3-pyatspi gir1.2-gtk-4.0 gir1.2-adw-1 bubblewrap dbus-x11 xterm fonts-dejavu-core fonts-cantarell xdotool scrot x11-utils x11-xserver-utils xinput e2fsprogs sudo gnome-session gnome-session-xsession gnome-shell gnome-shell-extension-dash-to-panel gnome-control-center gnome-console gnome-text-editor nautilus firefox-esr adwaita-icon-theme libgl1-mesa-dri mesa-utils pipewire-audio wireplumber network-manager network-manager-gnome bluez cups system-config-printer fwupd xdg-desktop-portal-gnome gnome-keyring libpam-gnome-keyring at-spi2-core
 fi
 id rx >/dev/null 2>&1 || useradd -m -s /bin/bash rx
