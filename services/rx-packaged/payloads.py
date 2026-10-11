@@ -104,6 +104,8 @@ class PackageManager(LegacyPackageManager):
         if not entries:
             raise ValueError("no rollback version is available")
         previous = dict(entries.pop())
+        if previous.get("id") != app_id:
+            raise ValueError("rollback history identity mismatch")
         self.verify(previous)
         previous["history"] = entries
         previous["launch_count"] = current.get("launch_count", 0)

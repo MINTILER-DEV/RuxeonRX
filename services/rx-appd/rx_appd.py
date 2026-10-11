@@ -21,11 +21,19 @@ class AppRegistry:
 
     def _read(self) -> dict[str, dict[str, Any]]:
         if not self.path.exists(): return {}
-        try: return json.loads(self.path.read_text(encoding="utf-8"))
-        except json.JSONDecodeError:
+        def decode(path):
+            records = json.loads(path.read_text(encoding="utf-8"))
+            if not isinstance(records, dict): raise ValueError("invalid registry structure")
+            for identifier, record in records.items():
+                self._validate(record)
+                if identifier != record["id"]: raise ValueError("registry identity mismatch")
+            return records
+        try: return decode(self.path)
+        except (ValueError, TypeError):
             backup = self.path.with_suffix(".backup")
             if not backup.exists(): raise ValueError("registry corrupt; restore a recovery snapshot")
-            restored = json.loads(backup.read_text(encoding="utf-8"))
+            try: restored = decode(backup)
+            except (ValueError, TypeError): raise ValueError("registry and backup corrupt; restore a recovery snapshot")
             shutil.copyfile(self.path, self.path.with_suffix(".corrupt"))
             shutil.copyfile(backup, self.path)
             (self.path.parent / "safe-mode").touch()
