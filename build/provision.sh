@@ -88,6 +88,7 @@ panel-size=52
 panel-positions='{"0":"BOTTOM"}'
 panel-sizes='{"0":52}'
 intellihide=false
+hide-overview-on-startup=true
 show-apps-icon=true
 show-favorites=true
 show-running-apps=true
@@ -96,6 +97,13 @@ trans-bg-color='#111827'
 trans-use-custom-opacity=true
 trans-panel-opacity=0.95
 EOF
+python3 - <<'PY'
+import json
+from pathlib import Path
+metadata = Path('/usr/share/gnome-shell/extensions/dash-to-panel@jderose9.github.com/metadata.json')
+with Path('/etc/dconf/db/local.d/00-ruxeonrx').open('a') as defaults:
+    defaults.write('extension-version=' + str(int(json.loads(metadata.read_text())['version'])) + '\n')
+PY
 dconf update
 cat > /etc/xdg/autostart/ruxeonrx-services.desktop <<'EOF'
 [Desktop Entry]
