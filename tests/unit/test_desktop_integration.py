@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT / "shell"), str(ROOT / "services/rx-settingsd"), str(ROOT / "sdk/bindings/python")]
-from system_integration import apply_settings, sync_favorites, reconcile_favorites
+from system_integration import apply_settings, sync_favorites, reconcile_favorites, reconcile_settings
 from rx_settingsd import Settings
 from app_manager import AppManager
 from rx_notificationd import NotificationCenter
@@ -53,6 +53,17 @@ class DesktopIntegration(unittest.TestCase):
                 commands = [call.args[0] for call in run.call_args_list]
                 self.assertIn(["gsettings", "set", "org.gnome.desktop.interface", "color-scheme", "'prefer-light'"], commands)
                 self.assertIn(["gsettings", "set", "org.gnome.desktop.interface", "text-scaling-factor", "1.0"], commands)
+
+    def test_native_system_settings_changes_are_imported(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            settings = Settings(Path(temporary))
+            with patch("system_integration.active", return_value=True), patch("system_integration.subprocess.check_output", side_effect=["1.5", "true", "'prefer-light'", "false", "'sloppy'"]):
+                values = reconcile_settings(settings)
+            self.assertEqual(1.5, values["appearance.text_scale"])
+            self.assertTrue(values["appearance.high_contrast"])
+            self.assertEqual("prefer-light", values["appearance.color_scheme"])
+            self.assertFalse(values["input.touchpad_natural_scroll"])
+            self.assertTrue(values["input.focus_follows_mouse"])
 
     def test_favorites_preserve_user_entries_and_remove_unpinned_managed_apps(self):
         with patch("system_integration.active", return_value=True), patch("system_integration.subprocess.check_output", return_value="['other.desktop','ruxeonrx-org.test.old.desktop']"), patch("system_integration.subprocess.run") as run:

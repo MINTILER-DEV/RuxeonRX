@@ -29,6 +29,24 @@ def apply_settings(settings):
         if result.returncode: print("RX_SETTINGS_WARNING=" + result.stderr.strip(), flush=True)
 
 
+def reconcile_settings(settings):
+    """Preserve changes made through native System Settings, including reboot."""
+    if not active(): return settings.all()
+    stored = settings.all()
+    for setting, (schema, key) in SETTING_MAP.items():
+        rendered = subprocess.check_output(["gsettings", "get", schema, key], text=True, timeout=5).strip()
+        if setting == "input.focus_follows_mouse": value = ast.literal_eval(rendered) in ("mouse", "sloppy")
+        elif isinstance(stored[setting], bool):
+            if rendered not in ("true", "false"): raise ValueError("invalid native boolean preference")
+            value = rendered == "true"
+        elif isinstance(stored[setting], float): value = float(rendered)
+        else: value = ast.literal_eval(rendered)
+        if value != stored[setting]:
+            try: stored = settings.set(setting, value)
+            except ValueError: print("RX_SETTINGS_WARNING=unsupported native value for " + setting, flush=True)
+    return stored
+
+
 def read_favorites():
     rendered = subprocess.check_output(["gsettings", "get", "org.gnome.shell", "favorite-apps"], text=True, timeout=5).strip()
     value = ast.literal_eval(rendered.removeprefix("@as "))

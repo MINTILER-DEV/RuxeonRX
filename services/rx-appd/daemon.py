@@ -21,7 +21,7 @@ from rx_deviced import DeviceInventory
 from rx_diagnosticsd import Diagnostics
 from rx_recoveryd import Recovery
 from integration import sync_desktop
-from system_integration import active, apply_settings, import_core_apps, sync_favorites, reconcile_favorites
+from system_integration import active, apply_settings, import_core_apps, sync_favorites, reconcile_favorites, reconcile_settings
 
 
 class DesktopService:
@@ -41,7 +41,10 @@ class DesktopService:
         if self.mode == "normal":
             import_core_apps(self.manager)
             if active(): sync_desktop(self.manager)
+            pending_settings = state / "settings-apply-pending"
+            if not pending_settings.exists(): reconcile_settings(self.settings)
             apply_settings(self.settings.all())
+            pending_settings.unlink(missing_ok=True)
 
     def reap(self):
         for token, app_id in list(self.tokens.items()):
@@ -176,8 +179,9 @@ class DesktopService:
                     answer["message"] = "Notification delivered"
             self.requests[p["id"]] = answer
             return answer
-        if method == "settings": return self.settings.all()
+        if method == "settings": return reconcile_settings(self.settings) if self.mode == "normal" else self.settings.all()
         if method == "set":
+            if self.mode == "normal": reconcile_settings(self.settings)
             settings = self.settings.set(p["key"], p["value"])
             apply_settings(settings)
             return settings
@@ -215,6 +219,9 @@ class DesktopService:
             result = Recovery(self.state).restore(p["name"])
             self.tokens.clear(); self.requests.clear()
             apply_settings(self.settings.all())
+            pending_settings = self.state / "settings-apply-pending"
+            if active(): pending_settings.unlink(missing_ok=True)
+            else: pending_settings.touch()
             sync_favorites(m.registry.list())
             return result
         if method == "bundle": return str(Diagnostics(self.state, DeviceInventory().collect()).create(Path(p["path"])))
