@@ -58,9 +58,11 @@ def click(atspi, name, app=None):
             print("REAL_GTK_ACTION=" + name, flush=True)
             return
         if node.getRoleName() in ("text", "entry"):
-            assert node.queryComponent().grabFocus()
-            print("REAL_GTK_FOCUS=" + name, flush=True)
-            return
+            try: focused = node.queryComponent().grabFocus()
+            except Exception: focused = False
+            if focused:
+                print("REAL_GTK_FOCUS=" + name, flush=True)
+                return
     if app == "gnome-shell":
         extents = node.queryComponent().getExtents(atspi.DESKTOP_COORDS)
         origin_x = origin_y = 0
@@ -131,6 +133,7 @@ def main(phase):
         Atspi.set_timeout(1500, 3000)
         assert client.call("health")["mode"] == "safe"
         click(atspi, "Snapshot name"); xdo("key", "ctrl+a"); xdo("type", "acceptance-good")
+        wait(lambda: control(atspi, "Snapshot name").queryText().getText(0, -1) == "acceptance-good", "snapshot name entered in the real recovery widget")
         click(atspi, "Restore"); click(atspi, "Continue")
         wait(lambda: client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0", "real GTK corrupt-state snapshot restore")
         assert client.call("health")["mode"] == "safe", "restoring next-login preferences must not mislabel the current recovery session"
