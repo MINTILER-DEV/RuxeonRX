@@ -29,3 +29,8 @@ and is never bundled with screenshots or support archives. Test SSH forwarding
 binds only to host loopback; the Windows run command exposes no SSH forwarding.
 Do not redistribute private builder keys or assume this development image is a
 production-hardened distribution. Review support bundles before sharing them.
+
+This QEMU development guest autologins the `rx` account without a configured
+login password. Automatic idle locking is disabled to avoid an un-unlockable
+session. Configure a password in System Settings > Users before enabling screen
+locking, and do not treat autologin as suitable physical-device authentication.

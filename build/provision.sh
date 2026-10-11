@@ -58,6 +58,10 @@ picture-options='zoom'
 color-scheme='prefer-dark'
 clock-show-weekday=true
 toolkit-accessibility=true
+[org/gnome/desktop/screensaver]
+lock-enabled=false
+[org/gnome/desktop/session]
+idle-delay=uint32 0
 [org/gnome/shell]
 enabled-extensions=['dash-to-panel@jderose9.github.com']
 favorite-apps=['org.ruxeonrx.Apps.desktop','org.gnome.Nautilus.desktop','org.gnome.Console.desktop','firefox-esr.desktop','org.ruxeonrx.Settings.desktop','org.ruxeonrx.Recovery.desktop']
