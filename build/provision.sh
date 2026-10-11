@@ -41,7 +41,12 @@ NAME=RuxeonRX
 ID=ruxeonrx
 ID_LIKE=debian
 VERSION_ID=1.0
+LOGO=ruxeonrx
 EOF
+install -d /usr/share/icons/hicolor/scalable/apps /etc/default/grub.d
+install -m 0644 /opt/RuxeonRX/shell/assets/ruxeonrx.svg /usr/share/icons/hicolor/scalable/apps/ruxeonrx.svg
+printf 'GRUB_DISTRIBUTOR=RuxeonRX\n' > /etc/default/grub.d/99-ruxeonrx.cfg
+if command -v update-grub >/dev/null; then update-grub; fi
 systemctl set-default graphical.target
 systemctl enable lightdm
 install -d /etc/systemd/system/lightdm.service.d

@@ -48,9 +48,9 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-windows.ps1
 
 The local Windows GUI does not need the server. DirectSound is the default
 host audio backend; `-Audio none` disables it. `-SafeMode` selects minimal
-recovery. Host microphone capture is off by default; `-Microphone` (or
-`--microphone` with the Python runner) explicitly enables that bridge. Minimal
-recovery independent of the GNOME taskbar extension. TCG is the tested baseline;
+recovery independent of the GNOME taskbar extension. Host microphone capture is
+off by default; `-Microphone` (or `--microphone` with the Python runner) explicitly
+enables that bridge. TCG is the tested baseline;
 WHPX/KVM need separate validation. Use the desktop power controls to shut down
 cleanly, rather than killing QEMU while it writes the disk.
 
