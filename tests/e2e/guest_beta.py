@@ -73,8 +73,9 @@ def main(phase):
     app_id = "org.ruxeonrx.native-test-app"
     if phase == "safe":
         assert client.call("health")["mode"] == "safe"
-        client.call("restore", name="acceptance-good")
-        assert client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0"
+        click(atspi, "Snapshot name"); xdo("key", "ctrl+a"); xdo("type", "acceptance-good")
+        click(atspi, "Restore"); click(atspi, "Continue")
+        wait(lambda: client.call("inspect", app_id=app_id)["app"]["version"] == "0.2.0", "real GTK corrupt-state snapshot restore")
         xdo("windowactivate", "--sync", window(shell_name)); xdo("key", "F5")
     else:
         def extension_active():
@@ -148,6 +149,8 @@ def main(phase):
             app = client.call("inspect", app_id=app_id)
             assert app["app"]["version"] == "0.2.0" and app["app"]["pinned"] and app["permissions"]["notifications"]
             assert client.call("settings")["appearance.text_scale"] == 1.25
+            saved = Path.home() / ".local/state/ruxeonrx/data" / app_id / "note.txt"
+            assert "real document" in saved.read_text(), "private note must persist across a real reboot"
             client.call("launch", app_id=app_id); wait(lambda: window("RX Notes"), "saved native app after reboot")
             client.call("remove", app_id=app_id, purge_data=True)
             assert not client.call("apps", query="RX Notes")

@@ -269,8 +269,9 @@ class Desktop(Adw.Application):
 
     def build_recovery(self):
         parent = self.pages["recovery"]
-        group = self.group(parent, "Recovery snapshots", "Snapshots replace RX-managed app state; they do not roll back the entire Debian base or your personal home folder.")
         self.snapshot_name = Gtk.Entry(placeholder_text="Snapshot name, e.g. before-update"); parent.append(self.snapshot_name)
+        self.snapshot_name.update_property([Gtk.AccessibleProperty.LABEL], ["Snapshot name"])
+        group = self.group(parent, "Recovery snapshots", "Snapshots replace RX-managed app state; they do not roll back the entire Debian base or your personal home folder.")
         self.row(group, "Create snapshot", button=self.button("Create", lambda: self.mutate("snapshot", name=self.snapshot_name.get_text()), True))
         self.row(group, "List saved snapshots", button=self.button("View", lambda: self.call("snapshots", lambda names: self.text_window("Recovery snapshots", "\n".join(names)))))
         self.row(group, "Restore snapshot", "Enter an existing name above. Running managed apps will be stopped.", self.button("Restore", lambda: self.confirm("Replace RX-managed state?", "A before-restore backup is created. Current managed state is then replaced.", lambda: self.mutate("restore", name=self.snapshot_name.get_text()))))
