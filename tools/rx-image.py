@@ -83,6 +83,9 @@ def build(args):
         process = subprocess.Popen(qemu, stdout=log, stderr=subprocess.STDOUT)
         try:
             ssh = wait_ssh(key, args.port, process)
+            # Refresh boots the existing OS. Stop its desktop before replacing
+            # session code; the builder's SSH/network connection remains live.
+            run(*ssh, "if systemctl cat lightdm.service >/dev/null 2>&1; then systemctl stop lightdm.service; fi")
             run("scp", "-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=/dev/null", "-i", str(key), "-P", str(args.port), str(source), "root@127.0.0.1:/tmp/ruxeonrx-source.tar.gz")
             provision = ("RX_SKIP_APT=1 " if args.code_only else "") + "bash /opt/RuxeonRX/build/provision.sh " + revision + " " + lock["snapshot"]
             run(*ssh, "mkdir -p /opt/RuxeonRX && tar -xzf /tmp/ruxeonrx-source.tar.gz -C /opt/RuxeonRX && " + provision)
