@@ -15,7 +15,8 @@ image = importlib.util.module_from_spec(spec); spec.loader.exec_module(image)
 
 
 def command(args, disk, log):
-    result = ["qemu-system-x86_64", "-accel", args.accel, "-m", "3072", "-smp", "2", "-drive", f"file={disk},format=qcow2,if=virtio", "-vga", "std", "-device", "ich9-intel-hda", "-device", "hda-duplex", "-audiodev", "none,id=audio0", "-nic", f"user,hostfwd=tcp:127.0.0.1:{args.port}-:22", "-serial", f"file:{log}", "-monitor", "none"]
+    audio = "none" if args.test or args.vnc else "dsound" if sys.platform == "win32" else "pa"
+    result = ["qemu-system-x86_64", "-accel", args.accel, "-m", "3072", "-smp", "2", "-drive", f"file={disk},format=qcow2,if=virtio", "-vga", "std", "-device", "ich9-intel-hda", "-device", "hda-duplex,audiodev=audio0", "-audiodev", audio + ",id=audio0", "-nic", f"user,hostfwd=tcp:127.0.0.1:{args.port}-:22", "-serial", f"file:{log}", "-monitor", "none"]
     if args.test: result += ["-display", "none"]
     elif args.vnc: result += ["-display", "none", "-vnc", "127.0.0.1:1"]
     else: result += ["-display", "gtk"]

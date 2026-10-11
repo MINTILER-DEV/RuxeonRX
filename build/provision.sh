@@ -96,6 +96,23 @@ done
 cp /usr/share/applications/org.ruxeonrx.Apps.desktop /usr/share/applications/org.ruxeonrx.Desktop.desktop
 printf 'NoDisplay=true\n' >> /usr/share/applications/org.ruxeonrx.Desktop.desktop
 systemctl enable NetworkManager cups bluetooth
+install -d /etc/NetworkManager/conf.d /etc/NetworkManager/system-connections
+printf '[ifupdown]\nmanaged=true\n' > /etc/NetworkManager/conf.d/10-ruxeonrx.conf
+if [[ ! -f /etc/NetworkManager/system-connections/ruxeonrx-wired.nmconnection ]]; then
+    cat > /etc/NetworkManager/system-connections/ruxeonrx-wired.nmconnection <<'EOF'
+[connection]
+id=RuxeonRX Wired
+type=ethernet
+autoconnect=true
+[ipv4]
+method=auto
+[ipv6]
+method=auto
+EOF
+    chmod 0600 /etc/NetworkManager/system-connections/ruxeonrx-wired.nmconnection
+fi
+# The next boot uses NetworkManager; do not interrupt the builder's live SSH lease.
+systemctl disable systemd-networkd.service networking.service || true
 dpkg-query -W -f='${Package}=${Version}\n' > /etc/ruxeonrx/packages.lock
 apt-get clean
 rm -f /tmp/ruxeonrx-source.tar.gz
