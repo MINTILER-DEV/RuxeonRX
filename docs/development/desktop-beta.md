@@ -39,8 +39,17 @@ VNC binds to host loopback port 5901. From Windows:
 ssh -L 5901:127.0.0.1:5901 mntweb@192.168.1.101
 ```
 
-Connect a VNC viewer to `localhost:5901`. Alternatively, copy the self-contained
-1.0 disk to this repository's `out/desktop/` and run locally:
+Connect a VNC viewer to `localhost:5901`. Alternatively, export the stopped
+development image into a self-contained compressed disk and checksum manifest:
+
+```sh
+./tools/rx-build export out/desktop/windows-rx-1.0.qcow2
+```
+
+Copy that disk to Windows as `out/desktop/ruxeonrx-1.0.qcow2`, and its adjacent
+`windows-rx-1.0.json` as `out/desktop/artifact.json`. The export verifies the
+frozen source and records the exported disk's own hash; it never copies private
+SSH keys. Then run locally:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\run-windows.ps1

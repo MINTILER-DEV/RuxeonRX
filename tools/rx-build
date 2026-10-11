@@ -15,6 +15,7 @@ sys.exit(0 if all(found.values()) else 2)
 PY
     ;;
   build) exec python3 "$root/tools/rx-image.py" "$@" ;;
+  export) exec python3 "$root/tools/rx-export.py" "$@" ;;
   run) exec python3 "$root/tools/rx-vm.py" "$@" ;;
   test) exec python3 "$root/tools/rx-vm.py" --test "$@" ;;
   safe)
@@ -36,5 +37,5 @@ for name in ('source.tar.gz', 'seed.iso'):
 print('VM disks, SSH keys, cached base and diagnostic evidence preserved.')
 PY
     ;;
-  *) echo "usage: $0 {bootstrap|build|run|test|doctor|bundle|clean} [options]" >&2; exit 64 ;;
+  *) echo "usage: $0 {bootstrap|build|export|run|test|safe|doctor|bundle|clean} [options]" >&2; exit 64 ;;
 esac
