@@ -69,6 +69,8 @@ class AppManager:
         app = self.registry.get(app_id)
         if app is None:
             raise KeyError(app_id)
+        if app["runtime_kind"] != "native-linux":
+            raise RuntimeError("RX 1.0 only launches native-linux applications; the " + app["runtime_kind"] + " runtime is not installed")
         if app.get("unrestricted"):
             command = self.launch(app_id)
             if intent:

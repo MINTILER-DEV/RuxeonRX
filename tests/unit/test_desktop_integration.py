@@ -17,6 +17,15 @@ from rxipc import Client
 
 
 class DesktopIntegration(unittest.TestCase):
+    def test_reserved_future_runtime_metadata_cannot_be_launched_as_native(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            manager = AppManager(Path(temporary))
+            manifest = json.loads((ROOT / "packages/native-test-app/manifest.json").read_text())
+            manifest["runtime_kind"] = "windows"
+            manager.registry.register(manifest)
+            with self.assertRaisesRegex(RuntimeError, "native-linux"): manager.execute(manifest["id"])
+            self.assertEqual(0, manager.registry.get(manifest["id"])["launch_count"])
+
     def test_unicode_file_responses_fit_the_bounded_client_reply(self):
         document = "😀" * (1024 * 1024 // 4)
         encoded = (json.dumps({"ok": True, "result": {"content": document}}) + "\n").encode()

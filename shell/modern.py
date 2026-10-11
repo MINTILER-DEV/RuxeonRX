@@ -152,7 +152,8 @@ class Desktop(Adw.Application):
         while child:
             following = child.get_next_sibling(); self.app_list.remove(child); child = following
         for app in sorted(records, key=lambda item: (not item.get("pinned", False), item["name"].casefold())):
-            row = Adw.ActionRow(title=("★ " if app.get("pinned") else "") + app["name"], subtitle=f"{app['version']} · Native Linux · {app['source']}", use_markup=False)
+            runtime = "Native Linux" if app["runtime_kind"] == "native-linux" else "Unavailable runtime: " + app["runtime_kind"]
+            row = Adw.ActionRow(title=("★ " if app.get("pinned") else "") + app["name"], subtitle=f"{app['version']} · {runtime} · {app['source']}", use_markup=False)
             row.set_selectable(True); row.set_activatable(True)
             row.app_id = app["id"]
             icon_path = Path(app.get("package", {}).get("root", "")) / app.get("icon", "")
@@ -173,16 +174,17 @@ class Desktop(Adw.Application):
         app = details["app"]
         if app["id"] != self.selection: return
         self.detail_row.set_title(app["name"])
+        available = app["runtime_kind"] == "native-linux"
         unrestricted = app.get("unrestricted") or not app.get("sandbox")
-        self.detail_row.set_subtitle("Trusted / unrestricted native app" if unrestricted else "Sandboxed native package · scoped RX portals")
+        self.detail_row.set_subtitle("Runtime not implemented in RX 1.0" if not available else "Trusted / unrestricted native app" if unrestricted else "Sandboxed native package · scoped RX portals")
         self.detail_label.set_label(f"{app['id']}\nManaged storage: {details['storage_bytes']:,} bytes\n" + "\n".join(details["logs"][-3:]))
         for row in list(getattr(self, "permission_rows", [])): self.permission_group.remove(row)
         self.permission_rows = []
         for capability in app["requested_permissions"]:
-            supported = capability in ("files", "notifications", "network") and not unrestricted
+            supported = capability in ("files", "notifications", "network") and not unrestricted and available
             switch = Gtk.Switch(active=details["permissions"].get(capability, False), valign=Gtk.Align.CENTER, sensitive=supported)
             switch.connect("notify::active", lambda widget, parameter, c=capability, identifier=app["id"]: self.call("decide", app_id=identifier, capability=c, allowed=widget.get_active()))
-            explanation = "Unrestricted app: this control cannot constrain native access" if unrestricted else "Not mediated by RX 1.0" if not supported else "Per-request consent" if capability == "files" else "Launch-time namespace policy" if capability == "network" else "Desktop policy"
+            explanation = "Runtime unavailable" if not available else "Unrestricted app: this control cannot constrain native access" if unrestricted else "Not mediated by RX 1.0" if not supported else "Per-request consent" if capability == "files" else "Launch-time namespace policy" if capability == "network" else "Desktop policy"
             row = self.row(self.permission_group, capability.replace("-", " ").title(), explanation, switch); self.permission_rows.append(row)
 
     def mutate(self, method, **params):
