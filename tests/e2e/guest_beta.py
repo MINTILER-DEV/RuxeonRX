@@ -137,6 +137,10 @@ def main(phase):
             click(atspi, "Save locally")
             saved = Path.home() / ".local/state/ruxeonrx/data" / app_id / "note.txt"
             wait(lambda: saved.is_file() and "real document" in saved.read_text(), "native app private saved note")
+            xdo("windowactivate", "--sync", notes); xdo("windowminimize", notes)
+            wait(lambda: not window("RX Notes"), "managed native window minimized")
+            click(atspi, "RX Notes", app="gnome-shell")
+            notes = wait(lambda: window("RX Notes"), "managed native window restored through its real taskbar item")
             # Actual taskbar click switches to Files, not a fabricated appd launch count.
             taskbar_files = wait(lambda: control(atspi, "Files", app="gnome-shell"), "visible taskbar Files button")
             bounds = taskbar_files.queryComponent().getExtents(atspi.DESKTOP_COORDS)
@@ -161,6 +165,9 @@ def main(phase):
             shell = wait(lambda: window("RX Apps"), "taskbar restores the minimized window")
             xdo("windowactivate", "--sync", shell); xdo("key", "alt+F4")
             wait(lambda: not window("RX Apps"), "management window closed without stopping permission UI")
+            xdo("windowactivate", "--sync", notes)
+            click(atspi, "Send notification"); consent(atspi, True)
+            wait(lambda: len(client.call("notifications")) >= 2, "permission broker remains usable while the management window is hidden")
             click(atspi, "RX Apps", app="gnome-shell")
             shell = wait(lambda: window("RX Apps"), "management application reopened through its taskbar launcher")
             xdo("windowactivate", "--sync", shell); xdo("key", "ctrl+d")

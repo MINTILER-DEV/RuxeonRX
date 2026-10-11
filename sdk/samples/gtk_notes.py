@@ -12,7 +12,11 @@ from rxipc import Client
 
 class Notes(Adw.Application):
     def __init__(self):
-        super().__init__(application_id=os.environ["RX_APP_ID"], flags=Gio.ApplicationFlags.NON_UNIQUE)
+        # Match RX's exported desktop-file identity for correct taskbar icons
+        # and grouping, while keeping the portal/registry identity unchanged.
+        GLib.set_prgname(os.environ["RX_APP_ID"])
+        GLib.set_application_name(os.environ.get("RX_APP_NAME", "RX Notes"))
+        super().__init__(application_id="ruxeonrx-" + os.environ["RX_APP_ID"], flags=Gio.ApplicationFlags.NON_UNIQUE)
         self.client = Client(Path(os.environ["RX_PORTAL_DIR"]) / "portal.sock")
         self.token = os.environ["RX_TOKEN"]; self.seen = set(); self.pending = set(); self.poll_busy = False
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
