@@ -88,6 +88,7 @@ class Desktop:
         toolbar.pack(fill="x", pady=6)
         self.search = ttk.Entry(toolbar, textvariable=self.query, width=28)
         self.search.pack(side="left", padx=4)
+        self.search.bind("<Control-a>", self.select_all_search)
         ttk.Label(toolbar, text="Search apps (Ctrl+F)").pack(side="left")
         ttk.Button(toolbar, text="Install package…", command=self.install).pack(side="right")
         ttk.Button(toolbar, text="Install RX Notes", command=self.install_sample).pack(side="right", padx=4)
@@ -112,6 +113,11 @@ class Desktop:
         self.tabs.select(self.app_frame)
         self.search.focus_set()
 
+    def select_all_search(self, event=None):
+        self.search.selection_range(0, "end")
+        self.search.icursor("end")
+        return "break"
+
     def refresh(self):
         old = self.selection
         self.apps = self.client.call("apps", query=self.query.get())
@@ -135,7 +141,7 @@ class Desktop:
             app = details["app"]
             content = f"{app['name']} • Native Linux {'(unrestricted)' if app.get('unrestricted') else '(managed package)'}\nID: {app['id']} • Storage: {details['storage_bytes']} bytes\nPermissions: {json.dumps(details['permissions'])}\n" + "\n".join(details["logs"][-4:])
         else:
-            content = "No apps installed. Install RX Notes or choose a native .rxpkg package."
+            content = "No matching apps. Clear the search to see installed applications." if self.query.get() else "No apps installed. Install RX Notes or choose a native .rxpkg package."
         self.details.delete("1.0", "end"); self.details.insert("1.0", content); self.details.configure(state="disabled")
 
     def install(self):
