@@ -36,7 +36,7 @@ def control(atspi, name, app=None, prefix=False):
     if app is None:
         app = "org.ruxeonrx.native-test-app" if name in ("Send notification", "Open file…", "Save locally") or name.startswith("Opened ") else "modern.py"
     for application in atspi.Registry.getDesktop(0):
-        if app and application.name != app: continue
+        if app and app != "*" and application.name != app: continue
         for node in descendants(application):
             try:
                 if (node.name == name or prefix and node.name.startswith(name)) and node.getState().contains(atspi.STATE_SHOWING): return node
@@ -87,14 +87,14 @@ def consent(atspi, allowed):
     click(atspi, "Allow" if allowed else "Deny")
 
 
-def open_picker(filename):
+def open_picker(filename, atspi):
     chooser = wait(lambda: window("Open"), "real GTK file picker")
     xdo("windowactivate", "--sync", chooser)
     xdo("key", "--clearmodifiers", "ctrl+l"); xdo("type", "--clearmodifiers", str(filename)); xdo("key", "Return")
-    # GTK 4's location entry first selects the file and closes the entry;
-    # the dialog's Open response needs a separate confirmation.
-    time.sleep(0.5)
-    if window("Open"): xdo("key", "--clearmodifiers", "Return")
+    # Wait for actual selection, not a fixed delay while the chooser is loading.
+    # A second Enter during location processing can cancel the dialog.
+    wait(lambda: control(atspi, filename.name, app="*", prefix=True), "selected file visible in the real chooser")
+    click(atspi, "Open", app="*")
 
 
 def class_window(name):
@@ -150,7 +150,7 @@ def main(phase):
             click(atspi, "Open file…"); consent(atspi, False)
             wait(lambda: client.call("inspect", app_id=app_id)["permissions"].get("files") is False, "file denial")
             document = Path.home() / "beta-portal.txt"; document.write_text("A real document opened with consent in the modern desktop.\n")
-            click(atspi, "Open file…"); consent(atspi, True); open_picker(document)
+            click(atspi, "Open file…"); consent(atspi, True); open_picker(document, atspi)
             wait(lambda: str(document) in client.call("inspect", app_id=app_id)["file_grants"], "chosen-file grant")
             wait(lambda: control(atspi, "Opened beta-portal.txt"), "file content delivered to the real native app")
             click(atspi, "Save locally")
