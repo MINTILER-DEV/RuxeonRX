@@ -84,7 +84,7 @@ class Desktop(Adw.Application):
         return group
 
     def row(self, group, title, subtitle="", button=None):
-        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        row = Adw.ActionRow(title=title, subtitle=subtitle, use_markup=False)
         if button: row.add_suffix(button); row.set_activatable_widget(button)
         group.add(row)
         return row
@@ -147,7 +147,7 @@ class Desktop(Adw.Application):
         while child:
             following = child.get_next_sibling(); self.app_list.remove(child); child = following
         for app in sorted(records, key=lambda item: (not item.get("pinned", False), item["name"].casefold())):
-            row = Adw.ActionRow(title=("★ " if app.get("pinned") else "") + app["name"], subtitle=f"{app['version']} · Native Linux · {app['source']}")
+            row = Adw.ActionRow(title=("★ " if app.get("pinned") else "") + app["name"], subtitle=f"{app['version']} · Native Linux · {app['source']}", use_markup=False)
             row.set_selectable(True); row.set_activatable(True)
             row.app_id = app["id"]
             icon_path = Path(app.get("package", {}).get("root", "")) / app.get("icon", "")
