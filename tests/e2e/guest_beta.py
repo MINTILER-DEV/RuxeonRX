@@ -32,12 +32,12 @@ def descendants(node, depth=0):
     except Exception: pass
 
 
-def control(atspi, name, app=None):
+def control(atspi, name, app=None, prefix=False):
     for application in atspi.Registry.getDesktop(0):
         if app and application.name != app: continue
         for node in descendants(application):
             try:
-                if node.name == name and node.getState().contains(atspi.STATE_SHOWING): return node
+                if (node.name == name or prefix and node.name.startswith(name)) and node.getState().contains(atspi.STATE_SHOWING): return node
             except Exception: pass
 
 
@@ -86,9 +86,13 @@ def main(phase):
             assert client.call("defaults")["inode/directory"] == "org.ruxeonrx.import.org.gnome.nautilus"
             shell = window("RX Apps"); xdo("windowactivate", "--sync", shell); xdo("key", "ctrl+i")
             wait(lambda: client.call("apps", query="RX Notes"), "native package installed through GTK UI")
-            xdo("key", "ctrl+f"); xdo("type", "no-such-app"); time.sleep(1); xdo("key", "ctrl+l")
+            xdo("key", "ctrl+f"); xdo("type", "no-such-app")
+            wait(lambda: control(atspi, "No matching applications"), "GTK empty search result")
+            xdo("key", "ctrl+l")
             assert client.call("inspect", app_id=app_id)["app"]["launch_count"] == 0
-            xdo("key", "ctrl+f", "ctrl+a"); xdo("type", "RX Notes"); time.sleep(1); xdo("key", "ctrl+l")
+            xdo("key", "ctrl+f", "ctrl+a"); xdo("type", "RX Notes")
+            wait(lambda: control(atspi, app_id, prefix=True), "filtered GTK selection details")
+            xdo("key", "ctrl+l")
             notes = wait(lambda: window("RX Notes"), "native GTK Notes window")
             click(atspi, "Send notification"); consent(atspi, False)
             wait(lambda: client.call("inspect", app_id=app_id)["permissions"].get("notifications") is False, "notification denial")
