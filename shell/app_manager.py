@@ -65,12 +65,15 @@ class AppManager:
         self._log(app_id, f"repaired version {record['version']}")
         return record
 
-    def execute(self, app_id: str, *, environment=None, sandbox=False) -> subprocess.Popen:
+    def execute(self, app_id: str, *, environment=None, sandbox=False, intent=None) -> subprocess.Popen:
         app = self.registry.get(app_id)
         if app is None:
             raise KeyError(app_id)
         if app.get("unrestricted"):
             command = self.launch(app_id)
+            if intent:
+                if not isinstance(intent, str) or "\x00" in intent: raise ValueError("invalid native launch intent")
+                command = [*command, intent]
         else:
             self.packages.verify(app)
             command = [part.replace("{package}", app["package"]["root"]) for part in self.launch(app_id)]

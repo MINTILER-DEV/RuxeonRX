@@ -36,7 +36,6 @@ def sync_favorites(records):
     try:
         current = ast.literal_eval(subprocess.check_output(["gsettings", "get", "org.gnome.shell", "favorite-apps"], text=True, timeout=5))
     except (ValueError, SyntaxError, subprocess.SubprocessError): current = CORE_FAVORITES
-    expected = {"ruxeonrx-" + app["id"] + ".desktop" for app in records}
     favorites = [item for item in current if not item.startswith("ruxeonrx-") or item in pinned]
     for item in CORE_FAVORITES + pinned:
         if item not in favorites: favorites.append(item)

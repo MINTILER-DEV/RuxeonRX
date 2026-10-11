@@ -18,7 +18,7 @@ for version, sandbox in (("0.1.0", True), ("0.2.0", True), ("0.1.0", False)):
     package = target / f"{'rx-notes' if sandbox else 'rx-notes-native'}-{version}.rxpkg"
     with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
         archive.writestr("manifest.json", json.dumps(manifest, sort_keys=True))
-        archive.write(ROOT / "sdk/samples/desktop_app.py", "main.py")
+        archive.write(ROOT / "sdk/samples/gtk_notes.py", "main.py")
         archive.write(ROOT / "sdk/bindings/python/rxipc.py", "rxipc.py")
         archive.write(ROOT / "shell/assets/notes.svg", "notes.svg")
     entries.append({"id": manifest["id"], "version": version, "url": package.resolve().as_uri(), "sha256": hashlib.sha256(package.read_bytes()).hexdigest()})

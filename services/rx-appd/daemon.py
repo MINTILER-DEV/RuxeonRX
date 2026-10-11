@@ -20,7 +20,7 @@ from rx_deviced import DeviceInventory
 from rx_diagnosticsd import Diagnostics
 from rx_recoveryd import Recovery
 from integration import sync_desktop
-from system_integration import apply_settings, import_core_apps, sync_favorites
+from system_integration import active, apply_settings, import_core_apps, sync_favorites
 
 
 class DesktopService:
@@ -39,7 +39,7 @@ class DesktopService:
         self.mode = "safe" if (state / "safe-mode").exists() else "normal"
         if self.mode == "normal":
             import_core_apps(self.manager)
-            sync_desktop(self.manager)
+            if active(): sync_desktop(self.manager)
             apply_settings(self.settings.all())
 
     def reap(self):
@@ -137,15 +137,15 @@ class DesktopService:
             app = m.registry.get(app_id)
             if app is None: raise ValueError("app is not installed")
             running = self.processes.get(app_id)
-            if running and running.poll() is None:
+            if running and running.poll() is None and not (app.get("unrestricted") and p.get("path")):
                 if p.get("path"): self.file_intent(app_id, p["path"])
                 return {"pid": running.pid, "running": True}
             token = secrets.token_hex(32)
             env = {"RX_TOKEN": token, "RX_PORTAL_DIR": str(self.runtime / "portal")}
-            process = m.execute(app_id, environment=env, sandbox=app.get("sandbox", False))
+            process = m.execute(app_id, environment=env, sandbox=app.get("sandbox", False), intent=p.get("path") if app.get("unrestricted") else None)
             self.processes[app_id] = process
             self.tokens[token] = app_id
-            if p.get("path"): self.file_intent(app_id, p["path"])
+            if p.get("path") and not app.get("unrestricted"): self.file_intent(app_id, p["path"])
             return {"pid": process.pid}
         if method == "decide":
             m.decide(p["app_id"], p["capability"], p["allowed"])

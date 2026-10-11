@@ -4,6 +4,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import platform
+import shutil
+import subprocess
 
 
 class DeviceInventory:
@@ -22,7 +24,21 @@ class DeviceInventory:
             "input": self._names("/sys/class/input"),
             "displays": self._names("/sys/class/drm"),
             "firmware_updates": {"status": "not-configured", "message": "QEMU alpha does not update host firmware."},
+            "renderer": self._command(["glxinfo", "-B"]),
+            "network_status": self._command(["nmcli", "-t", "device", "status"]),
+            "audio_status": self._command(["wpctl", "status"]),
+            "printer_status": self._command(["lpstat", "-p"]),
+            "firmware_devices": self._command(["fwupdmgr", "get-devices", "--json"]),
+            "graphics_drivers": {path.name: str((path / "device/driver").resolve()) for path in Path("/sys/class/drm").glob("card[0-9]") if (path / "device/driver").exists()},
         }
+
+    @staticmethod
+    def _command(command):
+        if not shutil.which(command[0]): return {"status": "unavailable"}
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=3)
+            return {"status": "available" if result.returncode == 0 else "not-ready", "output": (result.stdout or result.stderr)[:16000]}
+        except (OSError, subprocess.TimeoutExpired): return {"status": "not-ready"}
 
     @staticmethod
     def _names(directory):
