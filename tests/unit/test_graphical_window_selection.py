@@ -18,6 +18,12 @@ beta_spec.loader.exec_module(beta)
 
 
 class GraphicalWindowSelection(unittest.TestCase):
+    def test_nested_adwaita_controls_are_not_cut_off_at_eighteen_levels(self):
+        leaf = SimpleNamespace(name="Restore")
+        tree = [leaf]
+        for unused in range(24): tree = [tree]
+        self.assertIn(leaf, list(beta.descendants(tree)))
+
     def test_unsupported_entry_focus_uses_real_window_relative_pointer_coordinates(self):
         node = Mock(); node.name = "Snapshot name"; node.getRoleName.return_value = "entry"
         frame = Mock(); frame.name = "RX Recovery"; frame.parent = None; node.parent = frame
