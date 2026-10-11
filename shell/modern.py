@@ -250,8 +250,8 @@ class Desktop(Adw.Application):
             self.row(integrations, name, button=self.button("Open", lambda p=panel: self.system_settings(p)))
 
     def render_settings(self, settings):
-        for key, label in (("appearance.high_contrast", "High contrast"), ("input.touchpad_natural_scroll", "Natural touchpad scrolling")):
-            switch = Gtk.Switch(active=settings[key], valign=Gtk.Align.CENTER)
+        for key, label in (("appearance.high_contrast", "High contrast"), ("input.touchpad_natural_scroll", "Natural touchpad scrolling"), ("input.focus_follows_mouse", "Focus follows mouse")):
+            switch = Gtk.Switch(active=settings.get(key, False), valign=Gtk.Align.CENTER)
             switch.connect("notify::active", lambda widget, unused, k=key: self.mutate("set", key=k, value=widget.get_active()))
             self.row(self.settings_group, label, button=switch)
         adjustment = Gtk.Adjustment(value=settings["appearance.text_scale"], lower=0.75, upper=3.0, step_increment=0.25)
