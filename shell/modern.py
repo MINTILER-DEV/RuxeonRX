@@ -139,7 +139,10 @@ class Desktop(Adw.Application):
             following = child.get_next_sibling(); self.app_list.remove(child); child = following
         for app in sorted(records, key=lambda item: (not item.get("pinned", False), item["name"].casefold())):
             row = Adw.ActionRow(title=("★ " if app.get("pinned") else "") + app["name"], subtitle=f"{app['version']} · Native Linux · {app['source']}")
-            row.app_id = app["id"]; row.add_prefix(Gtk.Image(icon_name=app.get("desktop_icon", "application-x-executable-symbolic")))
+            row.app_id = app["id"]
+            icon_path = Path(app.get("package", {}).get("root", "")) / app.get("icon", "")
+            icon = Gtk.Image.new_from_file(str(icon_path)) if app.get("icon") and icon_path.is_file() else Gtk.Image(icon_name=app.get("desktop_icon", "application-x-executable-symbolic"))
+            icon.set_pixel_size(36); row.add_prefix(icon)
             self.app_list.append(row)
             if app["id"] == old: self.app_list.select_row(row)
         if self.app_list.get_selected_row() is None and records: self.app_list.select_row(self.app_list.get_row_at_index(0))
