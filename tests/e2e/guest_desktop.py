@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+import zipfile
 
 ROOT = Path("/opt/RuxeonRX")
 sys.path.insert(0, str(ROOT / "sdk/bindings/python"))
@@ -51,6 +52,30 @@ def permission(allowed):
     xdo("key", "--clearmodifiers", "alt+y" if allowed else "alt+n")
 
 
+def sandbox_boundary(client):
+    manifest = json.loads((ROOT / "packages/native-test-app/manifest.json").read_text())
+    manifest.update(id="org.ruxeonrx.security-probe", name="Sandbox probe", sandbox=True, requested_permissions=[], handlers=[], launch={"command": ["python3", "{package}/probe.py"]})
+    package = Path.home() / "sandbox-probe.rxpkg"
+    script = '''import errno, os
+from pathlib import Path
+for target in (Path(__file__), Path(os.environ["RX_PORTAL_DIR"]) / "sandbox-probe"):
+    try: target.write_text("unexpected write")
+    except OSError as error:
+        if error.errno not in (errno.EROFS, errno.EACCES): raise
+    else: raise SystemExit("sandbox boundary writable")
+(Path(os.environ["RX_DATA_DIR"]) / "private-note").write_text("private data writable")
+print("SANDBOX_BOUNDARIES=protected", flush=True)
+print("NETNS=" + os.readlink("/proc/self/ns/net"), flush=True)
+'''
+    with zipfile.ZipFile(package, "w") as archive:
+        archive.writestr("manifest.json", json.dumps(manifest)); archive.writestr("probe.py", script)
+    client.call("install", path=str(package)); client.call("launch", app_id=manifest["id"])
+    logs = wait(lambda: (entries if "SANDBOX_BOUNDARIES=protected" in entries and any(line.startswith("NETNS=") for line in entries) else None) if (entries := client.call("inspect", app_id=manifest["id"])["logs"]) else None, "read-only package and broker directories with private writable data")
+    namespace = next(line.removeprefix("NETNS=") for line in logs if line.startswith("NETNS="))
+    assert namespace != os.readlink("/proc/self/ns/net"), "sandbox shared the session's network namespace"
+    client.call("remove", app_id=manifest["id"], purge_data=True)
+
+
 def main(phase):
     runtime = Path(os.environ["RX_RUNTIME"])
     client = Client(runtime / "appd.sock")
@@ -91,6 +116,7 @@ def main(phase):
         for filename in ("apps.json", "apps.backup", "settings.json", "sources.json"):
             (state / filename).write_text("{simulated interrupted write")
     else:
+        sandbox_boundary(client)
         shell = window("RuxeonRX Desktop")
         xdo("windowactivate", "--sync", shell)
         xdo("key", "--clearmodifiers", "ctrl+i")

@@ -80,7 +80,7 @@ class AppManager:
         if sandbox:
             if not shutil.which("bwrap"):
                 raise RuntimeError("bubblewrap is required for sandboxed packages")
-            prefix = ["bwrap", "--die-with-parent", "--new-session", "--unshare-all", "--share-net" if "network" in app["requested_permissions"] and self.portal.allowed(app_id, "network") else "--unshare-net", "--ro-bind", "/usr", "/usr", "--symlink", "usr/bin", "/bin", "--symlink", "usr/lib", "/lib", "--symlink", "usr/lib64", "/lib64", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--ro-bind", "/etc", "/etc", "--ro-bind", app["package"]["root"], app["package"]["root"], "--bind", str(data_dir), str(data_dir), "--ro-bind", "/tmp/.X11-unix", "/tmp/.X11-unix", "--bind", env["RX_PORTAL_DIR"], env["RX_PORTAL_DIR"], "--setenv", "HOME", str(data_dir)]
+            prefix = ["bwrap", "--die-with-parent", "--new-session", "--unshare-all", "--share-net" if "network" in app["requested_permissions"] and self.portal.allowed(app_id, "network") else "--unshare-net", "--ro-bind", "/usr", "/usr", "--symlink", "usr/bin", "/bin", "--symlink", "usr/lib", "/lib", "--symlink", "usr/lib64", "/lib64", "--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp", "--ro-bind", "/etc", "/etc", "--ro-bind", app["package"]["root"], app["package"]["root"], "--bind", str(data_dir), str(data_dir), "--ro-bind", "/tmp/.X11-unix", "/tmp/.X11-unix", "--ro-bind", env["RX_PORTAL_DIR"], env["RX_PORTAL_DIR"], "--setenv", "HOME", str(data_dir)]
             authority = env.get("XAUTHORITY", str(Path.home() / ".Xauthority"))
             if Path(authority).is_file():
                 prefix += ["--ro-bind", authority, authority, "--setenv", "XAUTHORITY", authority]
