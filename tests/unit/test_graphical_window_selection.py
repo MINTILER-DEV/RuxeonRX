@@ -2,9 +2,11 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import sys
 from unittest.mock import patch
 
 path = Path(__file__).resolve().parents[1] / "e2e/guest_desktop.py"
+sys.path.insert(0, str(path.parents[2] / "sdk/bindings/python"))
 spec = importlib.util.spec_from_file_location("guest_window_checks", path)
 guest = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guest)
