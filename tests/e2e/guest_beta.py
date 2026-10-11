@@ -107,6 +107,7 @@ def main(phase):
             document = Path.home() / "beta-portal.txt"; document.write_text("A real document opened with consent in the modern desktop.\n")
             click(atspi, "Open file…"); consent(atspi, True); open_picker(document)
             wait(lambda: str(document) in client.call("inspect", app_id=app_id)["file_grants"], "chosen-file grant")
+            wait(lambda: control(atspi, "Opened beta-portal.txt"), "file content delivered to the real native app")
             click(atspi, "Save locally")
             saved = Path.home() / ".local/state/ruxeonrx/data" / app_id / "note.txt"
             wait(lambda: saved.is_file() and "real document" in saved.read_text(), "native app private saved note")
