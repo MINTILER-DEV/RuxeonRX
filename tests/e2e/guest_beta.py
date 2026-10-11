@@ -108,7 +108,15 @@ def open_picker(filename, atspi):
 
 def class_window(name):
     result = subprocess.run(["xdotool", "search", "--onlyvisible", "--class", name], capture_output=True, text=True)
-    return managed_window(result.stdout) if result.returncode == 0 else None
+    target = managed_window(result.stdout) if result.returncode == 0 else None
+    if target: return target
+    # GNOME Console's real X11 class is kgx, not org.gnome.Console.
+    # GTK exports the actual app ID independently of the executable class.
+    clients = subprocess.check_output(["xprop", "-root", "_NET_CLIENT_LIST"], text=True, timeout=5)
+    for identifier in re.findall(r"0x[0-9a-fA-F]+", clients):
+        identity = subprocess.check_output(["xprop", "-id", identifier, "_GTK_APPLICATION_ID"], text=True, timeout=5)
+        if '"' + name + '"' in identity and managed_window(identifier): return identifier
+    return None
 
 
 def main(phase):
