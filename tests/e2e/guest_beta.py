@@ -49,7 +49,7 @@ def click(atspi, name, app=None):
         # Activate the real GTK accessible widget, not an IPC replacement for
         # its behavior. CSD/transient animations can invalidate X11 coordinates
         # between activation and a pointer click on slow software renderers.
-        if "Action" in node.getInterfaces():
+        if node.getRoleName() in ("push button", "button"):
             action = node.queryAction()
             assert action.nActions > 0 and action.doAction(0)
             print("REAL_GTK_ACTION=" + name, flush=True)
