@@ -1,5 +1,6 @@
 """Optional GNOME integration; no host writes outside an RX desktop session."""
 import os
+import ast
 from pathlib import Path
 import shutil
 import subprocess
@@ -28,16 +29,33 @@ def apply_settings(settings):
         if result.returncode: print("RX_SETTINGS_WARNING=" + result.stderr.strip(), flush=True)
 
 
+def read_favorites():
+    value = ast.literal_eval(subprocess.check_output(["gsettings", "get", "org.gnome.shell", "favorite-apps"], text=True, timeout=5))
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError("invalid desktop favorites")
+    return value
+
+
+def reconcile_favorites(manager):
+    """Import taskbar pin/unpin actions before returning the app list."""
+    if not active(): return
+    favorites = read_favorites()
+    for app in manager.registry.list():
+        pinned = "ruxeonrx-" + app["id"] + ".desktop" in favorites
+        if bool(app.get("pinned")) != pinned:
+            app["pinned"] = pinned
+            manager.registry.replace(app)
+
+
 def sync_favorites(records):
     if not active(): return
     pinned = ["ruxeonrx-" + app["id"] + ".desktop" for app in records if app.get("pinned")]
     # GNOME's own user pins are preserved; remove only managed entries no longer pinned.
-    import ast
     try:
-        current = ast.literal_eval(subprocess.check_output(["gsettings", "get", "org.gnome.shell", "favorite-apps"], text=True, timeout=5))
+        current = read_favorites()
     except (ValueError, SyntaxError, subprocess.SubprocessError): current = CORE_FAVORITES
     favorites = [item for item in current if not item.startswith("ruxeonrx-") or item in pinned]
-    for item in CORE_FAVORITES + pinned:
+    for item in pinned:
         if item not in favorites: favorites.append(item)
     subprocess.run(["gsettings", "set", "org.gnome.shell", "favorite-apps", repr(favorites)], check=True, timeout=5)
 

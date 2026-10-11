@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 
 
@@ -22,7 +23,7 @@ class NotificationCenter:
         if not permitted:
             return False
         entries = self._read()
-        entries.append({"app_id": app_id, "title": title, "body": body})
+        entries.append({"id": uuid.uuid4().hex, "app_id": app_id, "title": title, "body": body})
         self._write(entries[-100:])
         return True
 

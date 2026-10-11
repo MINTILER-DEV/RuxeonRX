@@ -1,6 +1,6 @@
-# RX 0.5 threat model
+# RX 1.0 native desktop beta threat model
 
-The alpha assumes the desktop user intentionally trusts installed native
+The beta assumes the desktop user intentionally trusts installed native
 software and software sources. It guards against corrupted packages, accidental
 state loss, path traversal in packages/snapshots, unauthorized portal methods,
 and app requests for undeclared capabilities. Package extraction is size-limited;
@@ -13,6 +13,15 @@ directory, an isolated network namespace and the portal socket. It receives
 selected file content via the broker. Imported system apps are unrestricted and
 are labeled accordingly. No unsigned-source trust is inferred from a checksum:
 the user must trust the source catalog. Remote sources require HTTPS.
+
+The X11 desktop is not a hostile-application security boundary: clients can
+observe input and interact with other windows. RX 1.0 does not claim clipboard,
+camera, microphone or screen-capture isolation. Unsupported permission controls
+are explicitly disabled. Network changes require a sandboxed app restart;
+file consent mediates brokered reads, not unrestricted system applications.
+GNOME settings control trusted base services; native imports run with full user
+access. Android, Wine/Windows and VM-backed app runtimes belong to later roadmap
+milestones and are not advertised as available in this release.
 
 The development image retains its unique builder SSH public key so automated
 acceptance can inspect the guest. Its private key stays under ignored `out/`

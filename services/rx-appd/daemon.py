@@ -20,7 +20,7 @@ from rx_deviced import DeviceInventory
 from rx_diagnosticsd import Diagnostics
 from rx_recoveryd import Recovery
 from integration import sync_desktop
-from system_integration import active, apply_settings, import_core_apps, sync_favorites
+from system_integration import active, apply_settings, import_core_apps, sync_favorites, reconcile_favorites
 
 
 class DesktopService:
@@ -99,7 +99,9 @@ class DesktopService:
 
     def dispatch(self, method, p):
         m = self.manager
-        if method == "apps": return m.registry.list(p.get("query", ""))
+        if method == "apps":
+            if self.mode == "normal": reconcile_favorites(m)
+            return m.registry.list(p.get("query", ""))
         if method == "install": return m.install_manifest(Path(p["path"]))
         if method == "update": return m.update(Path(p["path"]))
         if method == "repair": return m.repair(p["app_id"])
