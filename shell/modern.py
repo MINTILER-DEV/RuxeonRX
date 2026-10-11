@@ -126,8 +126,9 @@ class Desktop(Adw.Application):
         controls.append(self.button("Install package", lambda: self.choose_file("Install package", lambda path: self.mutate("install", path=path)), True))
         controls.append(self.button("RX Notes", self.install_sample))
         parent.append(controls)
-        self.app_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE); self.app_list.add_css_class("boxed-list")
+        self.app_list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, activate_on_single_click=False); self.app_list.add_css_class("boxed-list")
         self.app_list.connect("row-selected", self.selected)
+        self.app_list.connect("row-activated", lambda unused, row: self.mutate("launch", app_id=row.app_id))
         parent.append(self.app_list)
         self.detail_group = self.group(parent, "Application details")
         self.detail_row = self.row(self.detail_group, "Select an application")
@@ -147,6 +148,7 @@ class Desktop(Adw.Application):
             following = child.get_next_sibling(); self.app_list.remove(child); child = following
         for app in sorted(records, key=lambda item: (not item.get("pinned", False), item["name"].casefold())):
             row = Adw.ActionRow(title=("★ " if app.get("pinned") else "") + app["name"], subtitle=f"{app['version']} · Native Linux · {app['source']}")
+            row.set_selectable(True); row.set_activatable(True)
             row.app_id = app["id"]
             icon_path = Path(app.get("package", {}).get("root", "")) / app.get("icon", "")
             icon = Gtk.Image.new_from_file(str(icon_path)) if app.get("icon") and icon_path.is_file() else Gtk.Image(icon_name=app.get("desktop_icon", "application-x-executable-symbolic"))
