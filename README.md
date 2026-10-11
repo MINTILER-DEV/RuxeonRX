@@ -33,7 +33,7 @@ Ctrl+F searches, Ctrl+L launches the selection, and Ctrl+D opens its logs.
 ./tools/rx-build run --vnc
 ```
 
-Read [the complete build/run guide](docs/development/desktop-alpha.md),
+Read [the complete build/run guide](docs/development/desktop-beta.md),
 [the native desktop beta scope](docs/releases/rx-1.0.md),
 [the support matrix](docs/development/test-matrix.md), and
 [the security model](docs/security/threat-model.md).

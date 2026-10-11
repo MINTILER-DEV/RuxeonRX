@@ -26,7 +26,7 @@ class ManifestValidation(unittest.TestCase):
 
     def test_malformed_inputs_and_traversal_identity_are_rejected(self):
         base = json.loads((ROOT / "packages/native-test-app/manifest.json").read_text())
-        for field, value in (("id", "../../outside"), ("version", "../2"), ("launch", "shell"), ("requested_permissions", ["admin"]), ("handlers", ["not-a-mime"]), ("package_kind", "invented"), ("sandbox", "false"), ("icon", "../escape.svg"), ("name", "app\rExec=bad"), ("source", "test\x00source")):
+        for field, value in (("id", "../../outside"), ("version", "../2"), ("launch", "shell"), ("requested_permissions", ["admin"]), ("handlers", ["not-a-mime"]), ("package_kind", "invented"), ("sandbox", "false"), ("icon", "../escape.svg"), ("name", "app\rExec=bad"), ("source", "test\x00source"), ("desktop_icon", "notes\nExec=bad"), ("startup_wm_class", "bad\x00class")):
             with self.subTest(field=field):
                 candidate = {**base, field: value}
                 with self.assertRaises(ValueError): AppRegistry._validate(candidate)

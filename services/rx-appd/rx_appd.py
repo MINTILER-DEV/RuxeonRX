@@ -63,6 +63,9 @@ class AppRegistry:
                 raise ValueError(f"invalid {field}")
             if any(character in manifest[field] for character in ("\x00", "\r", "\n")):
                 raise ValueError(f"invalid control character in {field}")
+        for field in ("desktop_icon", "startup_wm_class"):
+            if field in manifest and (not isinstance(manifest[field], str) or any(character in manifest[field] for character in ("\x00", "\r", "\n"))):
+                raise ValueError(f"invalid {field}")
         if manifest["runtime_kind"] not in RUNTIMES:
             raise ValueError("unknown runtime kind")
         if manifest["package_kind"] not in {"deb", "portable", "desktop-entry", "test"}:
